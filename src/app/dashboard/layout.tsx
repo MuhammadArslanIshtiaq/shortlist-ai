@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getCurrentUser } from 'aws-amplify/auth';
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 
@@ -15,16 +16,16 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check authentication status
-    const authStatus = localStorage.getItem('isAuthenticated');
-    const userEmail = localStorage.getItem('userEmail');
+    const checkAuth = async () => {
+      try {
+        await getCurrentUser();
+        setIsAuthenticated(true);
+      } catch (error) {
+        router.push('/login');
+      }
+    };
     
-    if (authStatus === 'true' && userEmail) {
-      setIsAuthenticated(true);
-    } else {
-      router.push('/login');
-    }
-    
+    checkAuth();
     setIsLoading(false);
   }, [router]);
 

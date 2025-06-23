@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { publicFetch } from '@/lib/api';
 import { 
   Briefcase, 
   MapPin, 
@@ -222,11 +223,42 @@ export default function JobDetailPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (!resumeFile) {
+      alert('Please select a resume file.');
+      setIsSubmitting(false);
+      return;
+    }
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    try {
+      // Step 1: Get the presigned URL from our backend
+      const response = await publicFetch('/apply', {
+        method: 'POST',
+        body: JSON.stringify({
+          jobId: jobId,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          coverLetter: formData.coverLetter,
+          fileName: resumeFile.name,
+        }),
+      });
+
+      const { uploadUrl } = response;
+
+      // Step 2: Upload the file directly to S3 using the URL
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: resumeFile,
+      });
+
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('Application submission failed:', error);
+      alert('Application submission failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { authenticatedFetch } from '@/lib/api';
 import { 
   Briefcase, 
   Building2, 
@@ -31,6 +33,9 @@ export default function CreateJob() {
     isRemote: false,
     isUrgent: false
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -40,11 +45,44 @@ export default function CreateJob() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Job Data:', formData);
-    // Here you would typically send the data to your API
-    alert('Job created successfully!');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Transform form data to match API expectations
+      const jobData = {
+        title: formData.jobTitle,
+        company: formData.company,
+        location: formData.location,
+        salary_min: formData.salaryMin ? parseInt(formData.salaryMin) : null,
+        salary_max: formData.salaryMax ? parseInt(formData.salaryMax) : null,
+        salary_currency: formData.salaryCurrency,
+        employment_type: formData.employmentType,
+        experience_level: formData.experienceLevel,
+        description: formData.jobDescription,
+        requirements: formData.requirements,
+        benefits: formData.benefits,
+        application_deadline: formData.applicationDeadline || null,
+        is_remote: formData.isRemote,
+        is_urgent: formData.isUrgent,
+        status: 'active'
+      };
+
+      const result = await authenticatedFetch('/jobs', {
+        method: 'POST',
+        body: JSON.stringify(jobData)
+      });
+
+      alert('Job created successfully!');
+      router.push('/dashboard/jobs');
+    } catch (error) {
+      console.error('Failed to create job:', error);
+      setError('Failed to create job. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -327,6 +365,11 @@ export default function CreateJob() {
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4">
+            {error && (
+              <div className="flex-1 bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
             <button
               type="button"
               className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center"
@@ -336,10 +379,20 @@ export default function CreateJob() {
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center"
+              disabled={isLoading}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Create Job
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Create Job
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -2,19 +2,42 @@
 
 import { User, Bell, Search, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { signOut, getCurrentUser } from 'aws-amplify/auth';
+import { useEffect, useState } from 'react';
 
 export default function Header() {
   const router = useRouter();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
-  // Get user info from localStorage
-  const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
-  const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null;
+  useEffect(() => {
+    const getUserInfo = async () => {
+      try {
+        const user = await getCurrentUser();
+        setUserEmail(user.username);
+      } catch (error) {
+        console.error('Error getting user info:', error);
+      }
+    };
+    
+    getUserInfo();
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRole');
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      // Clear localStorage for compatibility
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Fallback to manual logout
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+      router.push('/login');
+    }
   };
 
   return (
@@ -47,7 +70,7 @@ export default function Header() {
           <div className="flex items-center space-x-3">
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">HR Manager</p>
-              <p className="text-xs text-gray-500">{userEmail || 'hr@shortlistai.com'}</p>
+              <p className="text-xs text-gray-500">{userEmail || 'Loading...'}</p>
             </div>
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
