@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Shortlist AI - AI-Powered Auto-Ranking & Shortlisting",
-  description: "Modern HR dashboard for AI-powered candidate ranking and shortlisting",
+  title: "Login - Shortlist AI",
+  description: "HR login for Shortlist AI dashboard",
 };
 
-export default function RootLayout({
+export default function LoginLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -31,4 +31,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+} 

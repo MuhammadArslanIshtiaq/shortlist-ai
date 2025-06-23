@@ -1,0 +1,191 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, Lock, Mail, Sparkles, AlertCircle, Building2 } from 'lucide-react';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    // Simulate authentication delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Simple validation - in a real app, this would be server-side validation
+    if (email === 'hr@shortlistai.com' && password === 'hr123') {
+      // Store authentication state (in a real app, use proper JWT tokens)
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('userRole', 'hr');
+      router.push('/dashboard');
+    } else {
+      setError('Invalid email or password. Please try again.');
+    }
+
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8">
+        {/* Logo and Brand */}
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome to Shortlist AI
+          </h2>
+          <p className="text-gray-600">
+            HR Dashboard Access
+          </p>
+        </div>
+
+        {/* Login Form */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember Me and Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                  Remember me
+                </label>
+              </div>
+              <div className="text-sm">
+                <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                  Forgot password?
+                </a>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Signing in...
+                </div>
+              ) : (
+                'Sign in to Dashboard'
+              )}
+            </button>
+          </form>
+
+          {/* Demo Credentials */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-600 mb-2 font-medium">Demo HR Credentials:</p>
+            <p className="text-xs text-gray-500">Email: hr@shortlistai.com</p>
+            <p className="text-xs text-gray-500">Password: hr123</p>
+          </div>
+        </div>
+
+        {/* Public Careers Link */}
+        <div className="text-center">
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Building2 className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Looking for a job?</span>
+            </div>
+            <a 
+              href="/careers" 
+              className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              View our open positions →
+            </a>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center">
+          <p className="text-sm text-gray-500">
+            © 2024 Shortlist AI. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+} 
