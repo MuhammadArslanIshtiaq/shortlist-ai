@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Briefcase, 
   MapPin, 
@@ -9,155 +9,114 @@ import {
   Building2,
   Search,
   Filter,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from 'lucide-react';
+import { getJobs, getPublicJobs } from '@/lib/api';
 
-// Dummy jobs data
-const jobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    postedDate: "2024-01-15",
-    type: "Full-time",
-    experience: "5+ years",
-    description: "We're looking for a Senior Frontend Developer to join our growing team. You'll be responsible for building and maintaining our web applications using React, TypeScript, and modern frontend technologies.",
-    requirements: [
-      "5+ years of experience with React and TypeScript",
-      "Strong understanding of modern JavaScript (ES6+)",
-      "Experience with state management (Redux, Zustand)",
-      "Knowledge of CSS preprocessors (Sass, Less)",
-      "Experience with testing frameworks (Jest, React Testing Library)"
-    ],
-    benefits: [
-      "Competitive salary and equity",
-      "Health, dental, and vision insurance",
-      "Flexible work hours and remote options",
-      "Professional development budget",
-      "401(k) matching"
-    ]
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    company: "InnovateLabs",
-    location: "New York, NY",
-    salary: "$130k - $160k",
-    postedDate: "2024-01-14",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Join our product team to help shape the future of our platform. You'll work closely with engineering, design, and business teams to deliver exceptional user experiences.",
-    requirements: [
-      "3+ years of product management experience",
-      "Strong analytical and problem-solving skills",
-      "Experience with agile methodologies",
-      "Excellent communication and collaboration skills",
-      "Background in SaaS or B2B products"
-    ],
-    benefits: [
-      "Competitive salary and benefits",
-      "Flexible work environment",
-      "Professional growth opportunities",
-      "Health and wellness programs",
-      "Team events and activities"
-    ]
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    company: "AI Solutions",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    postedDate: "2024-01-13",
-    type: "Full-time",
-    experience: "2+ years",
-    description: "Help us build the next generation of AI-powered solutions. You'll work on machine learning models, data analysis, and predictive analytics.",
-    requirements: [
-      "2+ years of experience in data science or ML",
-      "Proficiency in Python, R, or similar",
-      "Experience with ML frameworks (TensorFlow, PyTorch)",
-      "Strong statistical analysis skills",
-      "Experience with big data technologies"
-    ],
-    benefits: [
-      "Competitive compensation",
-      "Cutting-edge technology stack",
-      "Research and development opportunities",
-      "Conference and training budget",
-      "Flexible work arrangements"
-    ]
-  },
-  {
-    id: 4,
-    title: "UX Designer",
-    company: "Design Studio",
-    location: "Seattle, WA",
-    salary: "$100k - $130k",
-    postedDate: "2024-01-12",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Create beautiful and intuitive user experiences for our products. You'll work on user research, wireframing, prototyping, and visual design.",
-    requirements: [
-      "3+ years of UX/UI design experience",
-      "Proficiency in design tools (Figma, Sketch)",
-      "Experience with user research and testing",
-      "Strong portfolio demonstrating UX skills",
-      "Knowledge of design systems and accessibility"
-    ],
-    benefits: [
-      "Creative and collaborative environment",
-      "Latest design tools and resources",
-      "Professional development opportunities",
-      "Health and wellness benefits",
-      "Flexible work schedule"
-    ]
-  },
-  {
-    id: 5,
-    title: "DevOps Engineer",
-    company: "CloudTech",
-    location: "Remote",
-    salary: "$115k - $145k",
-    postedDate: "2024-01-11",
-    type: "Full-time",
-    experience: "4+ years",
-    description: "Join our DevOps team to help build and maintain our cloud infrastructure. You'll work on CI/CD pipelines, monitoring, and automation.",
-    requirements: [
-      "4+ years of DevOps or SRE experience",
-      "Experience with AWS, Azure, or GCP",
-      "Knowledge of Docker and Kubernetes",
-      "Experience with CI/CD tools (Jenkins, GitLab)",
-      "Strong scripting skills (Python, Bash)"
-    ],
-    benefits: [
-      "Remote-first culture",
-      "Competitive salary and equity",
-      "Health insurance and benefits",
-      "Professional development budget",
-      "Flexible work hours"
-    ]
+// Type definition for Job
+interface Job {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  work_arrangement: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  application_deadline: string | null;
+  createdAt: number;
+  status: string;
+  is_urgent: boolean;
+}
+
+// Simple public fetch function for careers page
+const publicFetch = async (endpoint: string) => {
+  const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`);
   }
-];
+  
+  return response.json();
+};
 
 export default function CareersPage() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Try to use the public endpoint first, fallback to regular endpoint
+      let jobsData;
+      try {
+        jobsData = await publicFetch('/jobs/public');
+      } catch (err) {
+        // If public endpoint doesn't exist, try the regular endpoint
+        console.log('Public endpoint not available, trying regular endpoint...');
+        jobsData = await publicFetch('/jobs');
+      }
+      // Filter to only show OPEN jobs
+      const openJobs = jobsData.filter((job: Job) => job.status === 'OPEN');
+      setJobs(openJobs);
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+      setError('Failed to load jobs. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format salary range
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min && !job.salary_max) {
+      return 'Not specified';
+    }
+    
+    const currency = job.salary_currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency;
+    
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
+    }
+  };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = !locationFilter || job.location.toLowerCase().includes(locationFilter.toLowerCase());
-    const matchesType = !typeFilter || job.type === typeFilter;
+    const matchesType = !typeFilter || job.employment_type === typeFilter;
     
     return matchesSearch && matchesLocation && matchesType;
   });
 
   const uniqueLocations = [...new Set(jobs.map(job => job.location))];
-  const uniqueTypes = [...new Set(jobs.map(job => job.type))];
+  const uniqueTypes = [...new Set(jobs.map(job => job.employment_type))];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -191,17 +150,47 @@ export default function CareersPage() {
           <div className="flex justify-center space-x-4">
             <div className="bg-white/20 rounded-lg px-6 py-3">
               <p className="text-sm text-blue-100">Open Positions</p>
-              <p className="text-2xl font-bold">{jobs.length}</p>
+              <p className="text-2xl font-bold">{loading ? '...' : jobs.length}</p>
             </div>
             <div className="bg-white/20 rounded-lg px-6 py-3">
               <p className="text-sm text-blue-100">Companies</p>
-              <p className="text-2xl font-bold">{new Set(jobs.map(job => job.company)).size}</p>
+              <p className="text-2xl font-bold">{loading ? '...' : new Set(jobs.map(job => job.company)).size}</p>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Error State */}
+      {error && (
+        <section className="bg-red-50 border-b border-red-200 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <p className="text-red-800 mb-4">{error}</p>
+              <button
+                onClick={fetchJobs}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <section className="bg-white py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Loading available positions...</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Search and Filters */}
+      {!loading && !error && (
       <section className="bg-white py-8 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -241,16 +230,20 @@ export default function CareersPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">All Types</option>
-                {uniqueTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Internship">Internship</option>
+                <option value="Freelance">Freelance</option>
               </select>
             </div>
           </div>
         </div>
       </section>
+      )}
 
       {/* Jobs List */}
+      {!loading && !error && (
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
@@ -264,13 +257,13 @@ export default function CareersPage() {
 
           <div className="space-y-6">
             {filteredJobs.map((job) => (
-              <div key={job.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                <div key={job.jobId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                          <a href={`/careers/${job.id}`} className="hover:text-blue-600 transition-colors">
+                            <a href={`/careers/${job.jobId}`} className="hover:text-blue-600 transition-colors">
                             {job.title}
                           </a>
                         </h4>
@@ -280,7 +273,7 @@ export default function CareersPage() {
                         </div>
                       </div>
                       <a 
-                        href={`/careers/${job.id}`}
+                          href={`/careers/${job.jobId}`}
                         className="text-blue-600 hover:text-blue-700 flex items-center text-sm font-medium"
                       >
                         View Details
@@ -295,21 +288,35 @@ export default function CareersPage() {
                       </div>
                       <div className="flex items-center text-gray-600">
                         <DollarSign className="w-4 h-4 mr-2" />
-                        {job.salary}
+                          {formatSalary(job)}
                       </div>
                       <div className="flex items-center text-gray-600">
                         <Calendar className="w-4 h-4 mr-2" />
-                        Posted {new Date(job.postedDate).toLocaleDateString()}
-                      </div>
+                          Posted {new Date(job.createdAt * 1000).toLocaleDateString()}
+                        </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {job.type}
+                        {job.employment_type}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        {job.experience}
+                        {job.experience_level}
                       </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        job.work_arrangement === 'Remote' 
+                          ? 'bg-purple-100 text-purple-800'
+                          : job.work_arrangement === 'Hybrid'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {job.work_arrangement}
+                      </span>
+                      {job.is_urgent && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          Urgent
+                        </span>
+                      )}
                     </div>
 
                     <p className="text-gray-600 line-clamp-2">
@@ -320,7 +327,7 @@ export default function CareersPage() {
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <a
-                    href={`/careers/${job.id}`}
+                      href={`/careers/${job.jobId}`}
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Apply Now
@@ -335,12 +342,16 @@ export default function CareersPage() {
               <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
               <p className="text-gray-600">
-                Try adjusting your search criteria or filters to find more opportunities.
+                  {jobs.length === 0 
+                    ? 'No open positions available at the moment. Please check back later.'
+                    : 'Try adjusting your search criteria or filters to find more opportunities.'
+                  }
               </p>
             </div>
           )}
         </div>
       </section>
+      )}
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">

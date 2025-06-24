@@ -45,6 +45,7 @@ interface Job {
   salary_currency: string;
   employment_type: string;
   experience_level: string;
+  work_arrangement: string;
   description: string;
   requirements: string;
   benefits: string;
@@ -53,7 +54,6 @@ interface Job {
   status: string;
   applications_count?: number;
   shortlisted_ai_count?: number;
-  is_remote: boolean;
   is_urgent: boolean;
   jdBucket?: string;
   jdKey?: string;
@@ -65,7 +65,7 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
   const offset = circumference - progress;
-
+  
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-600';
     if (score >= 80) return 'text-blue-600';
@@ -142,45 +142,45 @@ const ActionDropdown = ({ candidateId, candidateName }: { candidateId: number; c
   }, [isOpen]);
 
   return (
-    <div className="relative">
-      <button
+      <div className="relative">
+        <button
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
         className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-      
-      {isOpen && (
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+        
+        {isOpen && (
         <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-          <div className="py-1">
-            <button
+            <div className="py-1">
+              <button
               onClick={() => handleAction('Schedule Interview')}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-            >
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
               <Calendar className="w-4 h-4 mr-2" />
               Schedule Interview
-            </button>
-            <button
+              </button>
+              <button
               onClick={() => handleAction('Add to Talent Pool')}
-              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-            >
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
               <UserPlus className="w-4 h-4 mr-2" />
               Add to Talent Pool
-            </button>
-            <button
+              </button>
+              <button
               onClick={() => handleAction('Reject')}
               className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
+              >
               <UserX className="w-4 h-4 mr-2" />
               Reject
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   );
 };
 
@@ -254,7 +254,7 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
           <div className="p-6">
             <div className="grid gap-6">
-              {shortlistedCandidates.map((candidate) => (
+                  {shortlistedCandidates.map((candidate) => (
                 <div key={candidate.id} className="bg-gray-50 rounded-xl p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-4">
@@ -278,7 +278,7 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">Skills</span>
                         <span className="text-sm font-semibold text-blue-600">{candidate.skills.score}</span>
-                      </div>
+                          </div>
                       <p className="text-xs text-gray-600">{candidate.skills.details}</p>
                     </div>
                     <div className="bg-white rounded-lg p-4">
@@ -305,15 +305,15 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <a
-                      href={candidate.resumeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                    >
-                      <FileText className="w-4 h-4 mr-1" />
-                      View Resume
-                    </a>
+                          <a
+                            href={candidate.resumeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            View Resume
+                          </a>
                     <div className="flex space-x-2">
                       <button className="inline-flex items-center px-3 py-1.5 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium">
                         <UserCheck className="w-4 h-4 mr-1" />
@@ -323,9 +323,9 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
                         <Calendar className="w-4 h-4 mr-1" />
                         Schedule Interview
                       </button>
-                    </div>
-                  </div>
-                </div>
+                                </div>
+                              </div>
+                                </div>
               ))}
             </div>
           </div>
@@ -418,16 +418,16 @@ const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
-                          <a
-                            href={candidate.resumeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <a
+                          href={candidate.resumeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                             className="inline-flex items-center px-2 py-1 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors text-xs"
-                          >
+                        >
                             <FileText className="w-3 h-3 mr-1" />
                             Resume
-                          </a>
-                          <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
+                        </a>
+                        <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
                         </div>
                       </td>
                     </tr>
@@ -454,30 +454,30 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm }: {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
         <div className="p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-red-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Delete Job</h3>
           </div>
-          
-          <p className="text-gray-600 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Delete Job</h3>
+        </div>
+        
+        <p className="text-gray-600 mb-6">
             Are you sure you want to delete this job? This action cannot be undone and will remove all associated applications and data.
-          </p>
-          
+        </p>
+        
           <div className="flex justify-end space-x-3">
-            <button
-              onClick={onClose}
+          <button
+            onClick={onClose}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
+          >
               Delete
-            </button>
+          </button>
           </div>
         </div>
       </div>
@@ -569,11 +569,11 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
     salaryCurrency: jobData.salary_currency,
     employmentType: jobData.employment_type,
     experienceLevel: jobData.experience_level,
+    workArrangement: jobData.work_arrangement,
     jobDescription: jobData.description,
     requirements: jobData.requirements || '',
     benefits: jobData.benefits || '',
     applicationDeadline: jobData.application_deadline || '',
-    isRemote: jobData.is_remote,
     isUrgent: jobData.is_urgent
   });
 
@@ -598,16 +598,16 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
         salary_currency: formData.salaryCurrency,
         employment_type: formData.employmentType,
         experience_level: formData.experienceLevel,
+        work_arrangement: formData.workArrangement,
         description: formData.jobDescription,
         requirements: formData.requirements,
         benefits: formData.benefits,
         application_deadline: formData.applicationDeadline || null,
-        is_remote: formData.isRemote,
         is_urgent: formData.isUrgent
       };
 
       await updateJob(jobData.jobId, jobUpdateData);
-      onClose();
+    onClose();
       window.location.reload();
     } catch (error) {
       console.error('Failed to update job:', error);
@@ -629,19 +629,19 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Job Title *</label>
               <input type="text" name="jobTitle" value={formData.jobTitle} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
-            </div>
-            <div>
+                </div>
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Company *</label>
               <input type="text" name="company" value={formData.company} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
-            </div>
-            <div>
+                </div>
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
               <input type="text" name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
-            </div>
-            <div>
+                </div>
+                <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Employment Type *</label>
               <select name="employmentType" value={formData.employmentType} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="full-time">Full-time</option>
@@ -649,8 +649,8 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
                 <option value="contract">Contract</option>
                 <option value="internship">Internship</option>
                 <option value="freelance">Freelance</option>
-              </select>
-            </div>
+                  </select>
+                </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Experience Level *</label>
               <select name="experienceLevel" value={formData.experienceLevel} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -662,66 +662,70 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Work Arrangement *</label>
+              <select name="workArrangement" value={formData.workArrangement} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="Onsite">Onsite</option>
+                <option value="Remote">Remote</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Application Deadline</label>
               <input type="date" name="applicationDeadline" value={formData.applicationDeadline} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
             </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Salary</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Salary</label>
               <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 80000" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Salary</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Salary</label>
               <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 120000" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
               <select name="salaryCurrency" value={formData.salaryCurrency} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
                 <option value="GBP">GBP</option>
                 <option value="CAD">CAD</option>
                 <option value="AUD">AUD</option>
-              </select>
-            </div>
+                  </select>
+                </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-center space-x-3">
-              <input type="checkbox" name="isRemote" checked={formData.isRemote} onChange={handleInputChange} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-              <label className="text-sm font-medium text-gray-700">Remote work available</label>
-            </div>
-            <div className="flex items-center space-x-3">
               <input type="checkbox" name="isUrgent" checked={formData.isUrgent} onChange={handleInputChange} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
               <label className="text-sm font-medium text-gray-700">Urgent hiring</label>
+              </div>
             </div>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Job Description *</label>
             <textarea name="jobDescription" value={formData.jobDescription} onChange={handleInputChange} rows={6} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Describe the role, responsibilities, and what the candidate will be working on..." required />
-          </div>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Requirements & Skills</label>
             <textarea name="requirements" value={formData.requirements} onChange={handleInputChange} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="List the required skills, experience, and qualifications..." />
-          </div>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Benefits & Perks</label>
             <textarea name="benefits" value={formData.benefits} onChange={handleInputChange} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Describe the benefits, perks, and what makes this role attractive..." />
-          </div>
+            </div>
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button type="button" onClick={onClose} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
             <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </button>
-          </div>
-        </form>
+                <Save className="w-4 h-4 mr-2" />
+                Save Changes
+              </button>
+            </div>
+          </form>
       </div>
     </div>
   );
@@ -807,12 +811,21 @@ export default function JobDetail() {
     if (!jobId || jobId === 'undefined' || jobId === 'null') return;
     
     try {
+      console.log('Attempting to delete job:', jobId);
       await deleteJob(jobId);
+      console.log('Job deleted successfully');
       setIsDeleteModalOpen(false);
       router.push('/dashboard/jobs');
     } catch (err) {
       console.error('Failed to delete job:', err);
-      alert('Failed to delete job. Please try again.');
+      let errorMessage = 'Failed to delete job. Please try again.';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      alert(errorMessage);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -931,7 +944,7 @@ export default function JobDetail() {
                   <div>
                     <p className="text-sm text-gray-500">Location</p>
                     <p className="font-medium text-gray-900">
-                      {job.is_remote ? `${job.location} (Remote)` : job.location}
+                      {job.location} ({job.work_arrangement})
                     </p>
                   </div>
                 </div>
@@ -961,13 +974,13 @@ export default function JobDetail() {
                 </div>
                 
                 {job.application_deadline && (
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-500">Application Deadline</p>
+                <div className="flex items-center space-x-3">
+                  <Calendar className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-500">Application Deadline</p>
                       <p className="font-medium text-gray-900">{new Date(job.application_deadline).toLocaleDateString()}</p>
-                    </div>
                   </div>
+                </div>
                 )}
               </div>
             </div>
@@ -982,22 +995,22 @@ export default function JobDetail() {
 
             {/* Requirements */}
             {job.requirements && (
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Skills</h2>
-                <div className="prose max-w-none">
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Skills</h2>
+              <div className="prose max-w-none">
                   <p className="text-gray-700 whitespace-pre-line">{job.requirements}</p>
-                </div>
               </div>
+            </div>
             )}
 
             {/* Benefits */}
             {job.benefits && (
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Benefits & Perks</h2>
-                <div className="prose max-w-none">
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Benefits & Perks</h2>
+              <div className="prose max-w-none">
                   <p className="text-gray-700 whitespace-pre-line">{job.benefits}</p>
-                </div>
               </div>
+            </div>
             )}
           </div>
 
@@ -1094,15 +1107,15 @@ export default function JobDetail() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">AI Shortlisted</span>
                   <span className="font-medium text-purple-600">{job.shortlisted_ai_count || 0}</span>
-                </div>
-                
+            </div>
+
                 {job.is_urgent && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Urgent Hiring</span>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                       Yes
                     </span>
-                  </div>
+                </div>
                 )}
               </div>
             </div>
@@ -1115,18 +1128,18 @@ export default function JobDetail() {
         isOpen={isShortlistedModalOpen} 
         onClose={() => setIsShortlistedModalOpen(false)} 
       />
-      
+
       <AllCandidatesModal 
         isOpen={isAllCandidatesModalOpen} 
         onClose={() => setIsAllCandidatesModalOpen(false)} 
       />
-      
+
       <DeleteConfirmationModal 
         isOpen={isDeleteModalOpen} 
         onClose={() => setIsDeleteModalOpen(false)} 
         onConfirm={handleDeleteJob} 
       />
-      
+
       <StatusConfirmationModal 
         isOpen={isStatusConfirmModalOpen} 
         onClose={() => setIsStatusConfirmModalOpen(false)} 

@@ -75,9 +75,45 @@ export const updateJob = async (id: string, jobData: any) => {
 };
 
 export const deleteJob = async (id: string) => {
-  return authenticatedFetch(`/jobs/${id}`, {
-    method: 'DELETE'
-  });
+  try {
+    const response = await fetch(`${API_URL}/jobs/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': await getAuthToken() || ''
+      }
+    });
+    
+    if (!response.ok) {
+      // Try to get error details from response
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody.error || errorBody.message || errorMessage;
+      } catch (parseError) {
+        // If response is empty or not JSON, use the status text
+        console.log('Response is not JSON, using status text');
+      }
+      throw new Error(errorMessage);
+    }
+    
+    // Check if response has content before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        return await response.json();
+      } catch (parseError) {
+        console.log('Response is JSON but parsing failed, returning success');
+        return { success: true };
+      }
+    } else {
+      // If no JSON content type, assume success
+      return { success: true };
+    }
+  } catch (error) {
+    console.error('Delete job error:', error);
+    throw error;
+  }
 };
 
 // Public jobs API for careers page
@@ -87,4 +123,29 @@ export const getPublicJobs = async () => {
 
 export const getPublicJobById = async (id: string) => {
   return publicFetch(`/jobs/public/${id}`);
-}; 
+};
+
+// Type definition for Job (for reference)
+interface Job {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  work_arrangement: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  application_deadline: string | null;
+  createdAt: number;
+  status: string;
+  applications_count?: number;
+  shortlisted_ai_count?: number;
+  is_urgent: boolean;
+  jdBucket?: string;
+  jdKey?: string;
+} 

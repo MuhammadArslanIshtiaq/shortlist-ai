@@ -26,11 +26,11 @@ export default function CreateJob() {
     salaryCurrency: 'USD',
     employmentType: 'Full-time',
     experienceLevel: 'Mid-level',
+    workArrangement: 'Onsite',
     jobDescription: '',
     requirements: '',
     benefits: '',
     applicationDeadline: '',
-    isRemote: false,
     isUrgent: false
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -61,11 +61,11 @@ export default function CreateJob() {
         salary_currency: formData.salaryCurrency,
         employment_type: formData.employmentType,
         experience_level: formData.experienceLevel,
+        work_arrangement: formData.workArrangement,
         description: formData.jobDescription,
         requirements: formData.requirements,
         benefits: formData.benefits,
         application_deadline: formData.applicationDeadline || null,
-        is_remote: formData.isRemote,
         is_urgent: formData.isUrgent,
         status: 'active'
       };
@@ -207,20 +207,27 @@ export default function CreateJob() {
               </div>
             </div>
 
-            {/* Checkboxes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  name="isRemote"
-                  checked={formData.isRemote}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label className="text-sm font-medium text-gray-700">
-                  Remote work available
+            {/* Work Arrangement */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Work Arrangement *
                 </label>
+                <select
+                  name="workArrangement"
+                  value={formData.workArrangement}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Onsite">Onsite</option>
+                  <option value="Remote">Remote</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
               </div>
+            </div>
+
+            {/* Additional Options */}
+            <div className="mt-6">
               <div className="flex items-center space-x-3">
                 <input
                   type="checkbox"

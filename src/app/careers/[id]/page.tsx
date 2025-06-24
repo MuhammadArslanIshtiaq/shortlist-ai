@@ -1,288 +1,414 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { publicFetch } from '@/lib/api';
+import { useState, useEffect } from 'react';
 import { 
   Briefcase, 
+  Building2,
   MapPin, 
   DollarSign, 
   Calendar, 
-  Building2,
+  Clock,
   ArrowLeft,
-  Check,
-  Upload,
-  User,
+  ExternalLink,
+  FileText,
   Mail,
-  FileText
+  Phone,
+  Globe,
+  Star,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Upload,
+  X
 } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-// Dummy jobs data (same as careers page)
-const jobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    postedDate: "2024-01-15",
-    type: "Full-time",
-    experience: "5+ years",
-    description: "We're looking for a Senior Frontend Developer to join our growing team. You'll be responsible for building and maintaining our web applications using React, TypeScript, and modern frontend technologies. This role involves working closely with our design and backend teams to create seamless user experiences.",
-    requirements: [
-      "5+ years of experience with React and TypeScript",
-      "Strong understanding of modern JavaScript (ES6+)",
-      "Experience with state management (Redux, Zustand)",
-      "Knowledge of CSS preprocessors (Sass, Less)",
-      "Experience with testing frameworks (Jest, React Testing Library)",
-      "Understanding of responsive design principles",
-      "Experience with build tools (Webpack, Vite)",
-      "Knowledge of performance optimization techniques"
-    ],
-    benefits: [
-      "Competitive salary and equity",
-      "Health, dental, and vision insurance",
-      "Flexible work hours and remote options",
-      "Professional development budget",
-      "401(k) matching",
-      "Unlimited PTO",
-      "Home office setup allowance",
-      "Team events and activities"
-    ]
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    company: "InnovateLabs",
-    location: "New York, NY",
-    salary: "$130k - $160k",
-    postedDate: "2024-01-14",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Join our product team to help shape the future of our platform. You'll work closely with engineering, design, and business teams to deliver exceptional user experiences. This role involves product strategy, roadmap planning, and cross-functional collaboration.",
-    requirements: [
-      "3+ years of product management experience",
-      "Strong analytical and problem-solving skills",
-      "Experience with agile methodologies",
-      "Excellent communication and collaboration skills",
-      "Background in SaaS or B2B products",
-      "Experience with user research and data analysis",
-      "Knowledge of product analytics tools",
-      "Ability to prioritize and manage multiple projects"
-    ],
-    benefits: [
-      "Competitive salary and benefits",
-      "Flexible work environment",
-      "Professional growth opportunities",
-      "Health and wellness programs",
-      "Team events and activities",
-      "Stock options",
-      "Conference and training budget"
-    ]
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    company: "AI Solutions",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    postedDate: "2024-01-13",
-    type: "Full-time",
-    experience: "2+ years",
-    description: "Help us build the next generation of AI-powered solutions. You'll work on machine learning models, data analysis, and predictive analytics. This role involves research, model development, and collaboration with engineering teams.",
-    requirements: [
-      "2+ years of experience in data science or ML",
-      "Proficiency in Python, R, or similar",
-      "Experience with ML frameworks (TensorFlow, PyTorch)",
-      "Strong statistical analysis skills",
-      "Experience with big data technologies",
-      "Knowledge of SQL and database systems",
-      "Experience with data visualization tools",
-      "Understanding of MLOps practices"
-    ],
-    benefits: [
-      "Competitive compensation",
-      "Cutting-edge technology stack",
-      "Research and development opportunities",
-      "Conference and training budget",
-      "Flexible work arrangements",
-      "Health insurance",
-      "401(k) matching"
-    ]
-  },
-  {
-    id: 4,
-    title: "UX Designer",
-    company: "Design Studio",
-    location: "Seattle, WA",
-    salary: "$100k - $130k",
-    postedDate: "2024-01-12",
-    type: "Full-time",
-    experience: "3+ years",
-    description: "Create beautiful and intuitive user experiences for our products. You'll work on user research, wireframing, prototyping, and visual design. This role involves collaboration with product and engineering teams.",
-    requirements: [
-      "3+ years of UX/UI design experience",
-      "Proficiency in design tools (Figma, Sketch)",
-      "Experience with user research and testing",
-      "Strong portfolio demonstrating UX skills",
-      "Knowledge of design systems and accessibility",
-      "Experience with prototyping tools",
-      "Understanding of user-centered design principles",
-      "Ability to work in cross-functional teams"
-    ],
-    benefits: [
-      "Creative and collaborative environment",
-      "Latest design tools and resources",
-      "Professional development opportunities",
-      "Health and wellness benefits",
-      "Flexible work schedule",
-      "Design conference attendance",
-      "Home office setup"
-    ]
-  },
-  {
-    id: 5,
-    title: "DevOps Engineer",
-    company: "CloudTech",
-    location: "Remote",
-    salary: "$115k - $145k",
-    postedDate: "2024-01-11",
-    type: "Full-time",
-    experience: "4+ years",
-    description: "Join our DevOps team to help build and maintain our cloud infrastructure. You'll work on CI/CD pipelines, monitoring, and automation. This role involves infrastructure as code and cloud security.",
-    requirements: [
-      "4+ years of DevOps or SRE experience",
-      "Experience with AWS, Azure, or GCP",
-      "Knowledge of Docker and Kubernetes",
-      "Experience with CI/CD tools (Jenkins, GitLab)",
-      "Strong scripting skills (Python, Bash)",
-      "Experience with infrastructure as code (Terraform)",
-      "Knowledge of monitoring and logging tools",
-      "Understanding of security best practices"
-    ],
-    benefits: [
-      "Remote-first culture",
-      "Competitive salary and equity",
-      "Health insurance and benefits",
-      "Professional development budget",
-      "Flexible work hours",
-      "Home office equipment",
-      "Conference attendance"
-    ]
+// Type definition for Job
+interface Job {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  work_arrangement: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  application_deadline: string | null;
+  createdAt: number;
+  status: string;
+  is_urgent: boolean;
+}
+
+// Simple public fetch function
+const publicFetch = async (endpoint: string) => {
+  const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`);
   }
-];
+  
+  return response.json();
+};
 
-export default function JobDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const jobId = parseInt(params.id as string);
-  const job = jobs.find(j => j.id === jobId);
-
+// Application Form Modal Component
+const ApplicationModal = ({ isOpen, onClose, job }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  job: Job; 
+}) => {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
-    coverLetter: ''
+    location: '',
+    linkedin: '',
+    portfolio: '',
+    coverLetter: '',
+    resume: null as File | null
   });
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  if (!job) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Job Not Found</h1>
-          <p className="text-gray-600 mb-6">The job you're looking for doesn't exist.</p>
-          <a
-            href="/careers"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Careers
-          </a>
-        </div>
-      </div>
-    );
-  }
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setResumeFile(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData(prev => ({
+        ...prev,
+        resume: file
+      }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
-    if (!resumeFile) {
-      alert('Please select a resume file.');
-      setIsSubmitting(false);
-      return;
-    }
+    setSubmitError(null);
 
     try {
-      // Step 1: Get the presigned URL from our backend
-      const response = await publicFetch('/apply', {
-        method: 'POST',
-        body: JSON.stringify({
-          jobId: jobId,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          coverLetter: formData.coverLetter,
-          fileName: resumeFile.name,
-        }),
-      });
-
-      const { uploadUrl } = response;
-
-      // Step 2: Upload the file directly to S3 using the URL
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: resumeFile,
-      });
-
-      setIsSubmitted(true);
+      // Here you would typically submit the application to your API
+      // For now, we'll simulate a successful submission
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setSubmitSuccess(false);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          location: '',
+          linkedin: '',
+          portfolio: '',
+          coverLetter: '',
+          resume: null
+        });
+      }, 3000);
     } catch (error) {
-      console.error('Application submission failed:', error);
-      alert('Application submission failed. Please try again.');
+      setSubmitError('Failed to submit application. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isSubmitted) {
+  if (!isOpen) return null;
+
+  if (submitSuccess) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center">
+          <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Application Submitted!</h3>
+          <p className="text-gray-600 mb-4">
+            Thank you for your application. We'll review your submission and get back to you soon.
+          </p>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Apply for {job.title}</h2>
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-gray-600 mt-2">{job.company}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+                <p className="text-red-800">{submitError}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+              <input
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn Profile</label>
+              <input
+                type="url"
+                name="linkedin"
+                value={formData.linkedin}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="https://linkedin.com/in/yourprofile"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio/Website</label>
+            <input
+              type="url"
+              name="portfolio"
+              value={formData.portfolio}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="https://yourportfolio.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Resume/CV *</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                className="hidden"
+                id="resume-upload"
+                required
+              />
+              <label htmlFor="resume-upload" className="cursor-pointer">
+                <span className="text-blue-600 hover:text-blue-700 font-medium">
+                  Choose a file
+                </span>
+                <span className="text-gray-500"> or drag and drop</span>
+              </label>
+              <p className="text-sm text-gray-500 mt-1">PDF, DOC, or DOCX (max 10MB)</p>
+              {formData.resume && (
+                <p className="text-sm text-green-600 mt-2">{formData.resume.name}</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cover Letter</label>
+            <textarea
+              name="coverLetter"
+              value={formData.coverLetter}
+              onChange={handleInputChange}
+              rows={6}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Tell us why you're interested in this position and why you'd be a great fit..."
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Submit Application'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default function JobDetailPage() {
+  const params = useParams();
+  const jobId = params.id as string;
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+      fetchJob();
+    } else {
+      setError('Invalid job ID');
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  const fetchJob = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use the regular endpoint since public endpoint might not exist yet
+      const jobData = await publicFetch(`/jobs/${jobId}`);
+      
+      // Check if job is open
+      if (jobData.status !== 'OPEN') {
+        setError('This job is no longer accepting applications.');
+        setLoading(false);
+        return;
+      }
+      
+      setJob(jobData);
+    } catch (err) {
+      console.error('Failed to fetch job:', err);
+      setError('Failed to load job details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format salary range
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min && !job.salary_max) {
+      return 'Not specified';
+    }
+    
+    const currency = job.salary_currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency;
+    
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading job details...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !job) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Application Submitted!</h1>
-            <p className="text-gray-600 mb-6">
-              Thank you for your interest in the {job.title} position at {job.company}. 
-              We've received your application and will review it carefully.
-            </p>
-            <div className="space-y-4">
-              <a
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-red-800 mb-2">Job Not Found</h2>
+            <p className="text-red-700 mb-4">{error || 'The job you are looking for does not exist or is no longer available.'}</p>
+            <Link
                 href="/careers"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Careers
-              </a>
-            </div>
+            </Link>
           </div>
         </div>
       </div>
@@ -296,50 +422,44 @@ export default function JobDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
+              <Link
+                href="/careers"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors mr-3"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center mr-3">
                 <Briefcase className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Shortlist AI Careers</h1>
             </div>
-            <a 
+            <Link 
               href="/login" 
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Admin Login
-            </a>
+            </Link>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
-        <div className="mb-8">
-          <a
-            href="/careers"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Careers
-          </a>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Job Header */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-4">
+                {job.is_urgent && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    Urgent Hiring
+                  </span>
+                )}
+              </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Job Details */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Job Header */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{job.title}</h1>
                   <div className="flex items-center text-gray-600 mb-4">
                     <Building2 className="w-5 h-5 mr-2" />
                     {job.company}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-900">{job.salary}</div>
-                  <div className="text-sm text-gray-600">{job.type}</div>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -348,188 +468,144 @@ export default function JobDetailPage() {
                   {job.location}
                 </div>
                 <div className="flex items-center text-gray-600">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Posted {new Date(job.postedDate).toLocaleDateString()}
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  {formatSalary(job)}
                 </div>
                 <div className="flex items-center text-gray-600">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  {job.experience}
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Posted {new Date(job.createdAt * 1000).toLocaleDateString()}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-6">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  {job.type}
+                  {job.employment_type}
                 </span>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  {job.experience}
+                  {job.experience_level}
+                </span>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  job.work_arrangement === 'Remote' 
+                    ? 'bg-purple-100 text-purple-800'
+                    : job.work_arrangement === 'Hybrid'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {job.work_arrangement}
                 </span>
               </div>
             </div>
 
+            <div className="lg:ml-8 mt-6 lg:mt-0">
+              <button
+                onClick={() => setIsApplicationModalOpen(true)}
+                className="w-full lg:w-auto px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
+              >
+                Apply Now
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Job Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Job Description */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Job Description</h2>
-              <p className="text-gray-700 leading-relaxed mb-6">{job.description}</p>
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Description</h2>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 whitespace-pre-line">{job.description}</p>
+              </div>
             </div>
 
             {/* Requirements */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Requirements</h2>
-              <ul className="space-y-2">
-                {job.requirements.map((requirement, index) => (
-                  <li key={index} className="flex items-start">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700">{requirement}</span>
-                  </li>
-                ))}
-              </ul>
+            {job.requirements && (
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Skills</h2>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-line">{job.requirements}</p>
+                </div>
             </div>
+            )}
 
             {/* Benefits */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Benefits</h2>
-              <ul className="space-y-2">
-                {job.benefits.map((benefit, index) => (
-                  <li key={index} className="flex items-start">
-                    <div className="w-2 h-2 bg-green-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <span className="text-gray-700">{benefit}</span>
-                  </li>
-                ))}
-              </ul>
+            {job.benefits && (
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Benefits & Perks</h2>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-line">{job.benefits}</p>
+                </div>
             </div>
+            )}
           </div>
 
-          {/* Application Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Apply for this position</h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Name */}
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter your full name"
-                    />
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Company Info */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">About {job.company}</h3>
+              <p className="text-gray-600 mb-4">
+                We're a forward-thinking company focused on innovation and growth. Join our team and be part of something amazing.
+              </p>
+              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                <Globe className="w-4 h-4" />
+                <span>Company website</span>
                   </div>
                 </div>
 
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address *
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter your email address"
-                    />
+            {/* Job Details */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Details</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Employment Type</span>
+                  <span className="font-medium text-gray-900">{job.employment_type}</span>
                   </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Experience Level</span>
+                  <span className="font-medium text-gray-900">{job.experience_level}</span>
                 </div>
-
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your phone number"
-                  />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Location</span>
+                  <span className="font-medium text-gray-900">
+                    {job.location}
+                  </span>
                 </div>
-
-                {/* Resume Upload */}
-                <div>
-                  <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-2">
-                    Resume/CV *
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <input
-                      type="file"
-                      id="resume"
-                      accept=".pdf,.doc,.docx"
-                      required
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <label htmlFor="resume" className="cursor-pointer">
-                      <p className="text-sm text-gray-600 mb-1">
-                        {resumeFile ? resumeFile.name : 'Click to upload or drag and drop'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PDF, DOC, or DOCX (max 10MB)
-                      </p>
-                    </label>
+                {job.application_deadline && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Application Deadline</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(job.application_deadline).toLocaleDateString()}
+                    </span>
                   </div>
+                )}
+                </div>
                 </div>
 
-                {/* Cover Letter */}
-                <div>
-                  <label htmlFor="coverLetter" className="block text-sm font-medium text-gray-700 mb-2">
-                    Cover Letter
-                  </label>
-                  <textarea
-                    id="coverLetter"
-                    name="coverLetter"
-                    rows={4}
-                    value={formData.coverLetter}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Tell us why you're interested in this position..."
-                  />
-                </div>
-
-                {/* Submit Button */}
+            {/* Apply CTA */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white">
+              <h3 className="text-lg font-semibold mb-2">Ready to Apply?</h3>
+              <p className="text-blue-100 mb-4">
+                Take the next step in your career and join our team.
+              </p>
                 <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Submitting...
-                    </div>
-                  ) : (
-                    'Submit Application'
-                  )}
+                onClick={() => setIsApplicationModalOpen(true)}
+                className="w-full px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+              >
+                Apply Now
                 </button>
-              </form>
-
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-600">
-                  By submitting this application, you agree to our privacy policy and consent to being contacted about this position.
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Application Modal */}
+      <ApplicationModal 
+        isOpen={isApplicationModalOpen} 
+        onClose={() => setIsApplicationModalOpen(false)} 
+        job={job} 
+      />
     </div>
   );
 } 
