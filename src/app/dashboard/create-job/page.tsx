@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authenticatedFetch } from '@/lib/api';
 import { 
   Briefcase, 
   Building2, 
@@ -15,6 +14,7 @@ import {
   Save,
   X
 } from 'lucide-react';
+import { createJob } from '@/lib/api';
 
 export default function CreateJob() {
   const [formData, setFormData] = useState({
@@ -70,10 +70,7 @@ export default function CreateJob() {
         status: 'active'
       };
 
-      const result = await authenticatedFetch('/jobs', {
-        method: 'POST',
-        body: JSON.stringify(jobData)
-      });
+      await createJob(jobData);
 
       alert('Job created successfully!');
       router.push('/dashboard/jobs');

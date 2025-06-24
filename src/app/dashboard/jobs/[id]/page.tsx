@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   Briefcase, 
   Building2,
@@ -25,274 +26,46 @@ import {
   UserCheck,
   UserPlus,
   UserX,
-  Save
+  Save,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { getJobById, updateJob, deleteJob } from '@/lib/api';
 
-// Dummy data for job details
-const jobDetails = {
-  id: 1,
-  title: "Senior Frontend Developer",
-  company: "TechCorp Inc.",
-  location: "San Francisco, CA",
-  salary: "$120k - $150k",
-  employmentType: "Full-time",
-  experienceLevel: "Senior",
-  postedDate: "2024-01-15",
-  applicationDeadline: "2024-02-15",
-  applications: 12,
-  shortlistedAI: 3,
-  status: "Active",
-  isRemote: true,
-  isUrgent: false,
-  jobDescription: `We are looking for a Senior Frontend Developer to join our dynamic team. You will be responsible for building and maintaining high-quality web applications using modern technologies.
+// Type definition for Job
+interface Job {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  application_deadline: string | null;
+  createdAt: number;
+  status: string;
+  applications_count?: number;
+  shortlisted_ai_count?: number;
+  is_remote: boolean;
+  is_urgent: boolean;
+  jdBucket?: string;
+  jdKey?: string;
+}
 
-Key Responsibilities:
-• Develop and maintain responsive web applications
-• Collaborate with design and backend teams
-• Write clean, maintainable, and efficient code
-• Participate in code reviews and technical discussions
-• Mentor junior developers
-• Stay up-to-date with industry trends and best practices
-
-What you'll be working on:
-• React/Next.js applications
-• TypeScript development
-• Performance optimization
-• Accessibility improvements
-• Component library development`,
-  requirements: `Required Skills:
-• 5+ years of experience in frontend development
-• Strong proficiency in JavaScript/TypeScript
-• Experience with React, Next.js, or similar frameworks
-• Knowledge of HTML5, CSS3, and modern CSS frameworks
-• Understanding of responsive design principles
-• Experience with version control (Git)
-• Knowledge of web accessibility standards
-
-Preferred Skills:
-• Experience with testing frameworks (Jest, Cypress)
-• Knowledge of build tools (Webpack, Vite)
-• Experience with state management (Redux, Zustand)
-• Understanding of SEO principles
-• Experience with CI/CD pipelines`,
-  benefits: `Benefits & Perks:
-• Competitive salary and equity package
-• Comprehensive health, dental, and vision insurance
-• Flexible work hours and remote work options
-• Professional development budget
-• 401(k) matching
-• Unlimited PTO
-• Home office setup allowance
-• Regular team events and activities
-• Learning and development opportunities`,
-  contactInfo: {
-    email: "careers@techcorp.com",
-    phone: "+1 (555) 123-4567",
-    website: "https://techcorp.com"
-  }
-};
-
-// Dummy data for shortlisted candidates
-const shortlistedCandidates = [
-  {
-    id: 1,
-    rank: 1,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-    location: "San Francisco, CA",
-    overallScore: 92,
-    skills: {
-      score: 95,
-      details: "React, TypeScript, Next.js, CSS3"
-    },
-    experience: {
-      score: 88,
-      details: "5+ years frontend development"
-    },
-    education: {
-      score: 90,
-      details: "BS Computer Science, Stanford"
-    },
-    other: {
-      score: 85,
-      details: "Open source contributions, tech blog"
-    },
-    resumeUrl: "https://example.com/resume1.pdf"
-  },
-  {
-    id: 2,
-    rank: 2,
-    name: "Michael Chen",
-    email: "michael.chen@email.com",
-    location: "Seattle, WA",
-    overallScore: 89,
-    skills: {
-      score: 92,
-      details: "React, JavaScript, HTML5, CSS3"
-    },
-    experience: {
-      score: 85,
-      details: "4 years frontend development"
-    },
-    education: {
-      score: 88,
-      details: "MS Computer Science, UW"
-    },
-    other: {
-      score: 82,
-      details: "Conference speaker, mentor"
-    },
-    resumeUrl: "https://example.com/resume2.pdf"
-  },
-  {
-    id: 3,
-    rank: 3,
-    name: "Emily Rodriguez",
-    email: "emily.rodriguez@email.com",
-    location: "Austin, TX",
-    overallScore: 87,
-    skills: {
-      score: 88,
-      details: "React, TypeScript, Redux, Jest"
-    },
-    experience: {
-      score: 90,
-      details: "6 years full-stack development"
-    },
-    education: {
-      score: 85,
-      details: "BS Software Engineering, UT"
-    },
-    other: {
-      score: 80,
-      details: "Team lead experience, agile certified"
-    },
-    resumeUrl: "https://example.com/resume3.pdf"
-  }
-];
-
-// Dummy data for all candidates
-const allCandidates = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-    location: "San Francisco, CA",
-    shortlistAIRank: 1,
-    resumeUrl: "https://example.com/resume1.pdf",
-    status: "Shortlisted"
-  },
-  {
-    id: 2,
-    name: "Michael Chen",
-    email: "michael.chen@email.com",
-    location: "Seattle, WA",
-    shortlistAIRank: 2,
-    resumeUrl: "https://example.com/resume2.pdf",
-    status: "Shortlisted"
-  },
-  {
-    id: 3,
-    name: "Emily Rodriguez",
-    email: "emily.rodriguez@email.com",
-    location: "Austin, TX",
-    shortlistAIRank: 3,
-    resumeUrl: "https://example.com/resume3.pdf",
-    status: "Shortlisted"
-  },
-  {
-    id: 4,
-    name: "David Kim",
-    email: "david.kim@email.com",
-    location: "New York, NY",
-    shortlistAIRank: 4,
-    resumeUrl: "https://example.com/resume4.pdf",
-    status: "Applied"
-  },
-  {
-    id: 5,
-    name: "Lisa Wang",
-    email: "lisa.wang@email.com",
-    location: "Los Angeles, CA",
-    shortlistAIRank: 5,
-    resumeUrl: "https://example.com/resume5.pdf",
-    status: "Applied"
-  },
-  {
-    id: 6,
-    name: "James Wilson",
-    email: "james.wilson@email.com",
-    location: "Chicago, IL",
-    shortlistAIRank: 6,
-    resumeUrl: "https://example.com/resume6.pdf",
-    status: "Applied"
-  },
-  {
-    id: 7,
-    name: "Maria Garcia",
-    email: "maria.garcia@email.com",
-    location: "Miami, FL",
-    shortlistAIRank: 7,
-    resumeUrl: "https://example.com/resume7.pdf",
-    status: "Applied"
-  },
-  {
-    id: 8,
-    name: "Alex Thompson",
-    email: "alex.thompson@email.com",
-    location: "Denver, CO",
-    shortlistAIRank: 8,
-    resumeUrl: "https://example.com/resume8.pdf",
-    status: "Applied"
-  },
-  {
-    id: 9,
-    name: "Rachel Green",
-    email: "rachel.green@email.com",
-    location: "Portland, OR",
-    shortlistAIRank: 9,
-    resumeUrl: "https://example.com/resume9.pdf",
-    status: "Applied"
-  },
-  {
-    id: 10,
-    name: "Tom Anderson",
-    email: "tom.anderson@email.com",
-    location: "Boston, MA",
-    shortlistAIRank: 10,
-    resumeUrl: "https://example.com/resume10.pdf",
-    status: "Applied"
-  },
-  {
-    id: 11,
-    name: "Sophie Brown",
-    email: "sophie.brown@email.com",
-    location: "Phoenix, AZ",
-    shortlistAIRank: 11,
-    resumeUrl: "https://example.com/resume11.pdf",
-    status: "Applied"
-  },
-  {
-    id: 12,
-    name: "Kevin Lee",
-    email: "kevin.lee@email.com",
-    location: "San Diego, CA",
-    shortlistAIRank: 12,
-    resumeUrl: "https://example.com/resume12.pdf",
-    status: "Applied"
-  }
-];
-
-// Circular Progress Bar Component
+// Circular Progress Component for AI Scores
 const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }) => {
-  const radius = (size - 6) / 2;
+  const radius = (size - 10) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
-  
+  const progress = (score / 100) * circumference;
+  const offset = circumference - progress;
+
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-600';
     if (score >= 80) return 'text-blue-600';
@@ -308,9 +81,8 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
   };
 
   return (
-    <div className="relative w-12 h-12">
-      <svg className="w-12 h-12 transform -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-        {/* Background circle */}
+    <div className="relative inline-flex items-center justify-center">
+      <svg className="transform -rotate-90" width={size} height={size}>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -320,7 +92,6 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
           fill="transparent"
           className="text-gray-200"
         />
-        {/* Progress circle */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -328,15 +99,14 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
           stroke="currentColor"
           strokeWidth="3"
           fill="transparent"
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className={getStrokeColor(score)}
           strokeLinecap="round"
-          className={`${getStrokeColor(score)} transition-all duration-300`}
         />
       </svg>
-      {/* Score text */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={`text-xs font-bold ${getScoreColor(score)}`}>
+      <div className="absolute">
+        <span className={`text-sm font-semibold ${getScoreColor(score)}`}>
           {score}
         </span>
       </div>
@@ -347,128 +117,117 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
 // Action Dropdown Component
 const ActionDropdown = ({ candidateId, candidateName }: { candidateId: number; candidateName: string }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [popupConfig, setPopupConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'success' | 'info' | 'warning';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
 
   const handleAction = (action: string) => {
-    let title = '';
-    let message = '';
-    let type: 'success' | 'info' | 'warning' = 'info';
-
-    switch (action) {
-      case 'shortlist':
-        title = 'Candidate Shortlisted';
-        message = `${candidateName} has been successfully shortlisted for interview. You will be notified when the interview is scheduled.`;
-        type = 'success';
-        break;
-      case 'talentpool':
-        title = 'Added to Talent Pool';
-        message = `${candidateName} has been added to your talent pool. You can reach out to them for future opportunities.`;
-        type = 'info';
-        break;
-      case 'reject':
-        title = 'Candidate Status Updated';
-        message = `${candidateName} has been marked as "Not Moving Forward". They will be notified of this decision.`;
-        type = 'warning';
-        break;
-    }
-
-    setPopupConfig({
-      isOpen: true,
-      title,
-      message,
-      type
-    });
+    console.log(`${action} for candidate ${candidateName} (ID: ${candidateId})`);
     setIsOpen(false);
+    // Here you would typically make an API call to perform the action
   };
 
   const closePopup = () => {
-    setPopupConfig(prev => ({ ...prev, isOpen: false }));
+    setIsOpen(false);
   };
 
-  return (
-    <>
-      <div className="relative">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
-        
-        {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-            <div className="py-1">
-              <button
-                onClick={() => handleAction('shortlist')}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <UserCheck className="w-4 h-4 mr-2 text-green-600" />
-                Shortlist for interview
-              </button>
-              <button
-                onClick={() => handleAction('talentpool')}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <UserPlus className="w-4 h-4 mr-2 text-blue-600" />
-                Add to Talentpool
-              </button>
-              <button
-                onClick={() => handleAction('reject')}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <UserX className="w-4 h-4 mr-2 text-red-600" />
-                Not Moving Forward
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isOpen) {
+        closePopup();
+      }
+    };
 
-      {/* Popup Message */}
-      {popupConfig.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`bg-white rounded-lg shadow-xl border max-w-md w-full mx-4 ${
-            popupConfig.type === 'success' ? 'border-green-200' :
-            popupConfig.type === 'info' ? 'border-blue-200' :
-            'border-red-200'
-          }`}>
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                {popupConfig.type === 'success' && <UserCheck className="w-6 h-6 text-green-600" />}
-                {popupConfig.type === 'info' && <UserPlus className="w-6 h-6 text-blue-600" />}
-                {popupConfig.type === 'warning' && <UserX className="w-6 h-6 text-red-600" />}
-                <h3 className="text-lg font-semibold text-gray-900">{popupConfig.title}</h3>
-              </div>
-              <p className="text-gray-700 mb-6">{popupConfig.message}</p>
-              <div className="flex justify-end">
-                <button
-                  onClick={closePopup}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  OK
-                </button>
-              </div>
-            </div>
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+          <div className="py-1">
+            <button
+              onClick={() => handleAction('Schedule Interview')}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Schedule Interview
+            </button>
+            <button
+              onClick={() => handleAction('Add to Talent Pool')}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add to Talent Pool
+            </button>
+            <button
+              onClick={() => handleAction('Reject')}
+              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <UserX className="w-4 h-4 mr-2" />
+              Reject
+            </button>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
 // Shortlisted Candidates Modal Component
 const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
+  // For now, we'll use dummy data for candidates since we haven't implemented the candidates API yet
+  const shortlistedCandidates = [
+    {
+      id: 1,
+      rank: 1,
+      name: "Sarah Johnson",
+      email: "sarah.johnson@email.com",
+      location: "San Francisco, CA",
+      overallScore: 92,
+      skills: { score: 95, details: "React, TypeScript, Next.js, CSS3" },
+      experience: { score: 88, details: "5+ years frontend development" },
+      education: { score: 90, details: "BS Computer Science, Stanford" },
+      other: { score: 85, details: "Open source contributions, tech blog" },
+      resumeUrl: "https://example.com/resume1.pdf"
+    },
+    {
+      id: 2,
+      rank: 2,
+      name: "Michael Chen",
+      email: "michael.chen@email.com",
+      location: "Seattle, WA",
+      overallScore: 89,
+      skills: { score: 92, details: "React, JavaScript, HTML5, CSS3" },
+      experience: { score: 85, details: "4 years frontend development" },
+      education: { score: 88, details: "MS Computer Science, UW" },
+      other: { score: 82, details: "Conference speaker, mentor" },
+      resumeUrl: "https://example.com/resume2.pdf"
+    },
+    {
+      id: 3,
+      rank: 3,
+      name: "Emily Rodriguez",
+      email: "emily.rodriguez@email.com",
+      location: "Austin, TX",
+      overallScore: 87,
+      skills: { score: 88, details: "React, TypeScript, Redux, Jest" },
+      experience: { score: 90, details: "6 years full-stack development" },
+      education: { score: 85, details: "BS Software Engineering, UT" },
+      other: { score: 80, details: "Team lead experience, agile certified" },
+      resumeUrl: "https://example.com/resume3.pdf"
+    }
+  ];
 
   if (!isOpen) return null;
 
@@ -481,7 +240,131 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
             <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <Brain className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Shortlisted AI Candidates</h2>
+            <h2 className="text-xl font-semibold text-gray-900">AI Shortlisted Candidates</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+          <div className="p-6">
+            <div className="grid gap-6">
+              {shortlistedCandidates.map((candidate) => (
+                <div key={candidate.id} className="bg-gray-50 rounded-xl p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                        #{candidate.rank}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{candidate.name}</h3>
+                        <p className="text-gray-600">{candidate.email}</p>
+                        <p className="text-sm text-gray-500">{candidate.location}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <CircularProgress score={candidate.overallScore} />
+                      <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Skills</span>
+                        <span className="text-sm font-semibold text-blue-600">{candidate.skills.score}</span>
+                      </div>
+                      <p className="text-xs text-gray-600">{candidate.skills.details}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Experience</span>
+                        <span className="text-sm font-semibold text-green-600">{candidate.experience.score}</span>
+                      </div>
+                      <p className="text-xs text-gray-600">{candidate.experience.details}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Education</span>
+                        <span className="text-sm font-semibold text-purple-600">{candidate.education.score}</span>
+                      </div>
+                      <p className="text-xs text-gray-600">{candidate.education.details}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Other</span>
+                        <span className="text-sm font-semibold text-orange-600">{candidate.other.score}</span>
+                      </div>
+                      <p className="text-xs text-gray-600">{candidate.other.details}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <a
+                      href={candidate.resumeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                    >
+                      <FileText className="w-4 h-4 mr-1" />
+                      View Resume
+                    </a>
+                    <div className="flex space-x-2">
+                      <button className="inline-flex items-center px-3 py-1.5 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium">
+                        <UserCheck className="w-4 h-4 mr-1" />
+                        Shortlist
+                      </button>
+                      <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        Schedule Interview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// All Candidates Modal Component
+const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  // For now, we'll use dummy data for candidates since we haven't implemented the candidates API yet
+  const allCandidates = [
+    { id: 1, name: "Sarah Johnson", email: "sarah.johnson@email.com", location: "San Francisco, CA", shortlistAIRank: 1, resumeUrl: "https://example.com/resume1.pdf", status: "Shortlisted" },
+    { id: 2, name: "Michael Chen", email: "michael.chen@email.com", location: "Seattle, WA", shortlistAIRank: 2, resumeUrl: "https://example.com/resume2.pdf", status: "Shortlisted" },
+    { id: 3, name: "Emily Rodriguez", email: "emily.rodriguez@email.com", location: "Austin, TX", shortlistAIRank: 3, resumeUrl: "https://example.com/resume3.pdf", status: "Shortlisted" },
+    { id: 4, name: "David Kim", email: "david.kim@email.com", location: "New York, NY", shortlistAIRank: 4, resumeUrl: "https://example.com/resume4.pdf", status: "Applied" },
+    { id: 5, name: "Lisa Wang", email: "lisa.wang@email.com", location: "Los Angeles, CA", shortlistAIRank: 5, resumeUrl: "https://example.com/resume5.pdf", status: "Applied" },
+    { id: 6, name: "James Wilson", email: "james.wilson@email.com", location: "Chicago, IL", shortlistAIRank: 6, resumeUrl: "https://example.com/resume6.pdf", status: "Applied" },
+    { id: 7, name: "Maria Garcia", email: "maria.garcia@email.com", location: "Miami, FL", shortlistAIRank: 7, resumeUrl: "https://example.com/resume7.pdf", status: "Applied" },
+    { id: 8, name: "Alex Thompson", email: "alex.thompson@email.com", location: "Denver, CO", shortlistAIRank: 8, resumeUrl: "https://example.com/resume8.pdf", status: "Applied" },
+    { id: 9, name: "Rachel Green", email: "rachel.green@email.com", location: "Portland, OR", shortlistAIRank: 9, resumeUrl: "https://example.com/resume9.pdf", status: "Applied" },
+    { id: 10, name: "Tom Anderson", email: "tom.anderson@email.com", location: "Boston, MA", shortlistAIRank: 10, resumeUrl: "https://example.com/resume10.pdf", status: "Applied" },
+    { id: 11, name: "Sophie Brown", email: "sophie.brown@email.com", location: "Phoenix, AZ", shortlistAIRank: 11, resumeUrl: "https://example.com/resume11.pdf", status: "Applied" },
+    { id: 12, name: "Kevin Lee", email: "kevin.lee@email.com", location: "San Diego, CA", shortlistAIRank: 12, resumeUrl: "https://example.com/resume12.pdf", status: "Applied" }
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">All Candidates</h2>
           </div>
           <button
             onClick={onClose}
@@ -499,173 +382,53 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Rank</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Candidate</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Score</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Resume</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {shortlistedCandidates.map((candidate) => (
-                    <>
-                      <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-semibold">
-                            {candidate.rank}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-medium text-gray-900">{candidate.name}</span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">{candidate.email}</td>
-                        <td className="px-6 py-4 text-gray-700">{candidate.location}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <CircularProgress score={candidate.overallScore} size={40} />
-                          
-                            <button
-                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.id ? null : candidate.id)}
-                              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              {expandedCandidate === candidate.id ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <a
-                            href={candidate.resumeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            View Resume
-                          </a>
-                        </td>
-                        <td className="px-6 py-4">
-                          <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
-                        </td>
-                      </tr>
-                      {expandedCandidate === candidate.id && (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-4 bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                              <div className="flex flex-col items-center">
-                                <div className="mb-3">
-                                  <CircularProgress score={candidate.skills.score} />
-                                </div>
-                                <h4 className="font-medium text-gray-900 mb-1">Skills</h4>
-                                <p className="text-sm text-gray-600 text-center">{candidate.skills.details}</p>
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <div className="mb-3">
-                                  <CircularProgress score={candidate.experience.score} />
-                                </div>
-                                <h4 className="font-medium text-gray-900 mb-1">Experience</h4>
-                                <p className="text-sm text-gray-600 text-center">{candidate.experience.details}</p>
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <div className="mb-3">
-                                  <CircularProgress score={candidate.education.score} />
-                                </div>
-                                <h4 className="font-medium text-gray-900 mb-1">Education</h4>
-                                <p className="text-sm text-gray-600 text-center">{candidate.education.details}</p>
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <div className="mb-3">
-                                  <CircularProgress score={candidate.other.score} />
-                                </div>
-                                <h4 className="font-medium text-gray-900 mb-1">Other</h4>
-                                <p className="text-sm text-gray-600 text-center">{candidate.other.details}</p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// All Candidates Modal Component
-const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Users className="w-4 h-4 text-white" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">All Candidates</h2>
-            <span className="text-sm text-gray-500">({allCandidates.length} applications)</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="p-6">
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Shortlist AI Rank</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Resume</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Action</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {allCandidates.map((candidate) => (
                     <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <span className="font-medium text-gray-900">{candidate.name}</span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-700">{candidate.email}</td>
-                      <td className="px-6 py-4 text-gray-700">{candidate.location}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <Brain className="w-4 h-4 text-purple-600" />
-                          <span className="font-medium text-purple-600">#{candidate.shortlistAIRank}</span>
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                            {candidate.shortlistAIRank}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <a
-                          href={candidate.resumeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                        >
-                          <FileText className="w-4 h-4 mr-1" />
-                          View Resume
-                        </a>
+                        <div>
+                          <p className="font-medium text-gray-900">{candidate.name}</p>
+                          <p className="text-sm text-gray-500">{candidate.email}</p>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
-                        <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
+                        <p className="text-gray-700">{candidate.location}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          candidate.status === 'Shortlisted' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {candidate.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <a
+                            href={candidate.resumeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors text-xs"
+                          >
+                            <FileText className="w-3 h-3 mr-1" />
+                            Resume
+                          </a>
+                          <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -689,31 +452,102 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm }: {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-            <Trash2 className="w-5 h-5 text-red-600" />
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Delete Job</h3>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">Delete Job</h2>
+          
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete this job? This action cannot be undone and will remove all associated applications and data.
+          </p>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-        
-        <p className="text-gray-600 mb-6">
-          Are you sure you want to delete this job posting? This action cannot be undone and will remove all associated candidate data.
-        </p>
-        
-        <div className="flex space-x-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Delete Job
-          </button>
+      </div>
+    </div>
+  );
+};
+
+// Status Confirmation Modal Component
+const StatusConfirmationModal = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  currentStatus, 
+  newStatus 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: () => void; 
+  currentStatus: string;
+  newStatus: string;
+}) => {
+  if (!isOpen) return null;
+
+  const isClosing = newStatus === 'CLOSED';
+  const isOpening = newStatus === 'OPEN';
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              isClosing ? 'bg-red-100' : 'bg-green-100'
+            }`}>
+              {isClosing ? (
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              ) : (
+                <UserCheck className="w-5 h-5 text-green-600" />
+              )}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {isClosing ? 'Close Job' : 'Open Job'}
+            </h3>
+          </div>
+          
+          <p className="text-gray-600 mb-6">
+            {isClosing 
+              ? `Are you sure you want to close this job? This will prevent new applications from being submitted.`
+              : `Are you sure you want to open this job? This will allow new applications to be submitted.`
+            }
+          </p>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className={`px-4 py-2 text-white rounded-lg transition-colors ${
+                isClosing 
+                  ? 'bg-red-600 hover:bg-red-700' 
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {isClosing ? 'Close Job' : 'Open Job'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -724,23 +558,23 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm }: {
 const EditJobModal = ({ isOpen, onClose, jobData }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  jobData: any; 
+  jobData: Job; 
 }) => {
   const [formData, setFormData] = useState({
     jobTitle: jobData.title,
     company: jobData.company,
     location: jobData.location,
-    salaryMin: jobData.salary.split(' - ')[0].replace('$', '').replace('k', '000'),
-    salaryMax: jobData.salary.split(' - ')[1].replace('$', '').replace('k', '000'),
-    salaryCurrency: 'USD',
-    employmentType: jobData.employmentType,
-    experienceLevel: jobData.experienceLevel,
-    jobDescription: jobData.jobDescription,
-    requirements: jobData.requirements,
-    benefits: jobData.benefits,
-    applicationDeadline: jobData.applicationDeadline,
-    isRemote: jobData.isRemote,
-    isUrgent: jobData.isUrgent
+    salaryMin: jobData.salary_min?.toString() || '',
+    salaryMax: jobData.salary_max?.toString() || '',
+    salaryCurrency: jobData.salary_currency,
+    employmentType: jobData.employment_type,
+    experienceLevel: jobData.experience_level,
+    jobDescription: jobData.description,
+    requirements: jobData.requirements || '',
+    benefits: jobData.benefits || '',
+    applicationDeadline: jobData.application_deadline || '',
+    isRemote: jobData.is_remote,
+    isUrgent: jobData.is_urgent
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -751,189 +585,143 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Updated Job Data:', formData);
-    onClose();
-    // Here you would typically make an API call to update the job
+    
+    try {
+      const jobUpdateData = {
+        title: formData.jobTitle,
+        company: formData.company,
+        location: formData.location,
+        salary_min: formData.salaryMin ? parseInt(formData.salaryMin) : null,
+        salary_max: formData.salaryMax ? parseInt(formData.salaryMax) : null,
+        salary_currency: formData.salaryCurrency,
+        employment_type: formData.employmentType,
+        experience_level: formData.experienceLevel,
+        description: formData.jobDescription,
+        requirements: formData.requirements,
+        benefits: formData.benefits,
+        application_deadline: formData.applicationDeadline || null,
+        is_remote: formData.isRemote,
+        is_urgent: formData.isUrgent
+      };
+
+      await updateJob(jobData.jobId, jobUpdateData);
+      onClose();
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to update job:', error);
+      alert('Failed to update job. Please try again.');
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Edit className="w-4 h-4 text-white" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Edit Job</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Edit Job</h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Basic Information */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
-                  <input
-                    type="text"
-                    name="jobTitle"
-                    value={formData.jobTitle}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
-                  <input
-                    type="text"
-                    name="company"
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Employment Type</label>
-                  <select
-                    name="employmentType"
-                    value={formData.employmentType}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
-                    <option value="Freelance">Freelance</option>
-                  </select>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Job Title *</label>
+              <input type="text" name="jobTitle" value={formData.jobTitle} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company *</label>
+              <input type="text" name="company" value={formData.company} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
+              <input type="text" name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Employment Type *</label>
+              <select name="employmentType" value={formData.employmentType} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
+                <option value="internship">Internship</option>
+                <option value="freelance">Freelance</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Experience Level *</label>
+              <select name="experienceLevel" value={formData.experienceLevel} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="entry-level">Entry-level</option>
+                <option value="mid-level">Mid-level</option>
+                <option value="senior">Senior</option>
+                <option value="lead">Lead</option>
+                <option value="executive">Executive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Application Deadline</label>
+              <input type="date" name="applicationDeadline" value={formData.applicationDeadline} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+          </div>
 
-            {/* Salary Information */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Salary Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Salary</label>
-                  <input
-                    type="number"
-                    name="salaryMin"
-                    value={formData.salaryMin}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Salary</label>
-                  <input
-                    type="number"
-                    name="salaryMax"
-                    value={formData.salaryMax}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-                  <select
-                    name="salaryCurrency"
-                    value={formData.salaryCurrency}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                  </select>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Salary</label>
+              <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 80000" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Salary</label>
+              <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 120000" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <select name="salaryCurrency" value={formData.salaryCurrency} onChange={handleInputChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="CAD">CAD</option>
+                <option value="AUD">AUD</option>
+              </select>
+            </div>
+          </div>
 
-            {/* Job Description */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h3>
-              <textarea
-                name="jobDescription"
-                value={formData.jobDescription}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center space-x-3">
+              <input type="checkbox" name="isRemote" checked={formData.isRemote} onChange={handleInputChange} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+              <label className="text-sm font-medium text-gray-700">Remote work available</label>
             </div>
+            <div className="flex items-center space-x-3">
+              <input type="checkbox" name="isUrgent" checked={formData.isUrgent} onChange={handleInputChange} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+              <label className="text-sm font-medium text-gray-700">Urgent hiring</label>
+            </div>
+          </div>
 
-            {/* Requirements */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Requirements & Skills</h3>
-              <textarea
-                name="requirements"
-                value={formData.requirements}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Job Description *</label>
+            <textarea name="jobDescription" value={formData.jobDescription} onChange={handleInputChange} rows={6} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Describe the role, responsibilities, and what the candidate will be working on..." required />
+          </div>
 
-            {/* Benefits */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Benefits & Perks</h3>
-              <textarea
-                name="benefits"
-                value={formData.benefits}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Requirements & Skills</label>
+            <textarea name="requirements" value={formData.requirements} onChange={handleInputChange} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="List the required skills, experience, and qualifications..." />
+          </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </button>
-            </div>
-          </form>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Benefits & Perks</label>
+            <textarea name="benefits" value={formData.benefits} onChange={handleInputChange} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Describe the benefits, perks, and what makes this role attractive..." />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -941,26 +729,147 @@ const EditJobModal = ({ isOpen, onClose, jobData }: {
 
 export default function JobDetail() {
   const params = useParams();
-  const jobId = params.id;
+  const jobId = params.id as string;
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isShortlistedModalOpen, setIsShortlistedModalOpen] = useState(false);
   const [isAllCandidatesModalOpen, setIsAllCandidatesModalOpen] = useState(false);
   const [jobStatusMenuOpen, setJobStatusMenuOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isStatusConfirmModalOpen, setIsStatusConfirmModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleJobStatusChange = (status: string) => {
-    console.log(`Changing job status to ${status}`);
-    setJobStatusMenuOpen(false);
-    // Here you would typically make an API call to update the job
+  useEffect(() => {
+    console.log('JobDetail useEffect - jobId:', jobId, 'params:', params, 'typeof jobId:', typeof jobId);
+    
+    // Check if jobId is valid (not undefined, null, empty string, or the string "undefined")
+    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+      fetchJob();
+    } else {
+      console.error('Invalid jobId:', jobId);
+      setError(`Invalid job ID: ${jobId}`);
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  const fetchJob = async () => {
+    // Additional validation
+    if (!jobId || jobId === 'undefined' || jobId === 'null' || jobId.trim() === '') {
+      console.error('fetchJob called with invalid jobId:', jobId);
+      setError(`Invalid job ID: ${jobId}`);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching job with ID:', jobId);
+      const jobData = await getJobById(jobId);
+      setJob(jobData);
+    } catch (err) {
+      console.error('Failed to fetch job:', err);
+      setError('Failed to load job details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteJob = () => {
-    console.log('Deleting job:', jobId);
-    setIsDeleteModalOpen(false);
-    // Here you would typically make an API call to delete the job
-    router.push('/jobs');
+  const handleJobStatusChange = async (status: string) => {
+    if (!job || !jobId || jobId === 'undefined' || jobId === 'null') return;
+    
+    // Show confirmation popup for status changes
+    setPendingStatusChange(status);
+    setIsStatusConfirmModalOpen(true);
+    setJobStatusMenuOpen(false);
   };
+
+  const confirmStatusChange = async () => {
+    if (!job || !jobId || jobId === 'undefined' || jobId === 'null' || !pendingStatusChange) return;
+    
+    try {
+      await updateJob(jobId, { status: pendingStatusChange });
+      setJob(prev => prev ? { ...prev, status: pendingStatusChange } : null);
+      setIsStatusConfirmModalOpen(false);
+      setPendingStatusChange(null);
+    } catch (err) {
+      console.error('Failed to update job status:', err);
+      alert('Failed to update job status. Please try again.');
+      setIsStatusConfirmModalOpen(false);
+      setPendingStatusChange(null);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!jobId || jobId === 'undefined' || jobId === 'null') return;
+    
+    try {
+      await deleteJob(jobId);
+      setIsDeleteModalOpen(false);
+      router.push('/dashboard/jobs');
+    } catch (err) {
+      console.error('Failed to delete job:', err);
+      alert('Failed to delete job. Please try again.');
+    }
+  };
+
+  // Format salary range
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min && !job.salary_max) {
+      return 'Not specified';
+    }
+    
+    const currency = job.salary_currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency;
+    
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading job details...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !job) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">{error || 'Job not found'}</p>
+            <div className="mt-4 flex space-x-3">
+              <button 
+                onClick={fetchJob}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+              <Link
+                href="/dashboard/jobs"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Back to Jobs
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -979,7 +888,7 @@ export default function JobDetail() {
                 <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <Briefcase className="w-5 h-5 text-white" />
                 </div>
-                <h1 className="text-3xl font-bold text-gray-900">{jobDetails.title}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
               </div>
             </div>
             <div className="flex space-x-3">
@@ -1013,7 +922,7 @@ export default function JobDetail() {
                   <Building2 className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Company</p>
-                    <p className="font-medium text-gray-900">{jobDetails.company}</p>
+                    <p className="font-medium text-gray-900">{job.company}</p>
                   </div>
                 </div>
                 
@@ -1021,7 +930,9 @@ export default function JobDetail() {
                   <MapPin className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-medium text-gray-900">{jobDetails.location}</p>
+                    <p className="font-medium text-gray-900">
+                      {job.is_remote ? `${job.location} (Remote)` : job.location}
+                    </p>
                   </div>
                 </div>
                 
@@ -1029,7 +940,7 @@ export default function JobDetail() {
                   <DollarSign className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Salary</p>
-                    <p className="font-medium text-gray-900">{jobDetails.salary}</p>
+                    <p className="font-medium text-gray-900">{formatSalary(job)}</p>
                   </div>
                 </div>
                 
@@ -1037,7 +948,7 @@ export default function JobDetail() {
                   <Clock className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Employment Type</p>
-                    <p className="font-medium text-gray-900">{jobDetails.employmentType}</p>
+                    <p className="font-medium text-gray-900">{job.employment_type}</p>
                   </div>
                 </div>
                 
@@ -1045,17 +956,19 @@ export default function JobDetail() {
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-sm text-gray-500">Posted Date</p>
-                    <p className="font-medium text-gray-900">{new Date(jobDetails.postedDate).toLocaleDateString()}</p>
+                    <p className="font-medium text-gray-900">{new Date(job.createdAt * 1000).toLocaleDateString()}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Application Deadline</p>
-                    <p className="font-medium text-gray-900">{new Date(jobDetails.applicationDeadline).toLocaleDateString()}</p>
+                {job.application_deadline && (
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Application Deadline</p>
+                      <p className="font-medium text-gray-900">{new Date(job.application_deadline).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -1063,25 +976,29 @@ export default function JobDetail() {
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Description</h2>
               <div className="prose max-w-none">
-                <p className="text-gray-700 whitespace-pre-line">{jobDetails.jobDescription}</p>
+                <p className="text-gray-700 whitespace-pre-line">{job.description}</p>
               </div>
             </div>
 
             {/* Requirements */}
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Skills</h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 whitespace-pre-line">{jobDetails.requirements}</p>
+            {job.requirements && (
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Requirements & Skills</h2>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-line">{job.requirements}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Benefits */}
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Benefits & Perks</h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 whitespace-pre-line">{jobDetails.benefits}</p>
+            {job.benefits && (
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Benefits & Perks</h2>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-line">{job.benefits}</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -1124,30 +1041,30 @@ export default function JobDetail() {
                     <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                       <div className="py-1">
                         <button
-                          onClick={() => handleJobStatusChange('Active')}
+                          onClick={() => handleJobStatusChange('OPEN')}
                           className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                            jobDetails.status === 'Active' 
+                            job.status === 'OPEN' 
                               ? 'text-green-700 bg-green-50' 
                               : 'text-gray-700 hover:bg-gray-100'
                           }`}
                         >
                           <div className={`w-2 h-2 rounded-full mr-2 ${
-                            jobDetails.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'
+                            job.status === 'OPEN' ? 'bg-green-500' : 'bg-gray-300'
                           }`}></div>
-                          Active
+                          Open
                         </button>
                         <button
-                          onClick={() => handleJobStatusChange('Inactive')}
+                          onClick={() => handleJobStatusChange('CLOSED')}
                           className={`flex items-center w-full px-4 py-2 text-sm transition-colors ${
-                            jobDetails.status === 'Inactive' 
-                              ? 'text-gray-700 bg-gray-50' 
+                            job.status === 'CLOSED' 
+                              ? 'text-red-700 bg-red-50' 
                               : 'text-gray-700 hover:bg-gray-100'
                           }`}
                         >
                           <div className={`w-2 h-2 rounded-full mr-2 ${
-                            jobDetails.status === 'Inactive' ? 'bg-gray-500' : 'bg-gray-300'
+                            job.status === 'CLOSED' ? 'bg-red-500' : 'bg-gray-300'
                           }`}></div>
-                          Inactive
+                          Closed
                         </button>
                       </div>
                     </div>
@@ -1155,94 +1072,73 @@ export default function JobDetail() {
                 </div>
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Status</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Status & Statistics</h3>
               
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Status</span>
+                  <span className="text-sm text-gray-500">Status</span>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    jobDetails.status === 'Active' 
+                    job.status === 'OPEN' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {jobDetails.status}
+                    {job.status === 'OPEN' ? 'Open' : 'Closed'}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Applications</span>
-                  <div className="flex items-center">
-                    <Users className="w-4 h-4 mr-1 text-gray-400" />
-                    <span className="font-medium">{jobDetails.applications}</span>
-                  </div>
+                  <span className="text-sm text-gray-500">Applications</span>
+                  <span className="font-medium text-gray-900">{job.applications_count || 0}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">AI Shortlisted</span>
-                  <div className="flex items-center">
-                    <Brain className="w-4 h-4 mr-1 text-purple-600" />
-                    <span className="font-medium text-purple-600">{jobDetails.shortlistedAI}</span>
+                  <span className="text-sm text-gray-500">AI Shortlisted</span>
+                  <span className="font-medium text-purple-600">{job.shortlisted_ai_count || 0}</span>
+                </div>
+                
+                {job.is_urgent && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Urgent Hiring</span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      Yes
+                    </span>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-700">{jobDetails.contactInfo.email}</span>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-700">{jobDetails.contactInfo.phone}</span>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Globe className="w-4 h-4 text-gray-400" />
-                  <a 
-                    href={jobDetails.contactInfo.website} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    {jobDetails.contactInfo.website}
-                  </a>
-                </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Shortlisted Candidates Modal */}
+      {/* Modals */}
       <ShortlistedCandidatesModal 
         isOpen={isShortlistedModalOpen} 
         onClose={() => setIsShortlistedModalOpen(false)} 
       />
-
-      {/* All Candidates Modal */}
+      
       <AllCandidatesModal 
         isOpen={isAllCandidatesModalOpen} 
         onClose={() => setIsAllCandidatesModalOpen(false)} 
       />
-
-      {/* Delete Confirmation Modal */}
+      
       <DeleteConfirmationModal 
         isOpen={isDeleteModalOpen} 
         onClose={() => setIsDeleteModalOpen(false)} 
         onConfirm={handleDeleteJob} 
       />
-
-      {/* Edit Job Modal */}
+      
+      <StatusConfirmationModal 
+        isOpen={isStatusConfirmModalOpen} 
+        onClose={() => setIsStatusConfirmModalOpen(false)} 
+        onConfirm={confirmStatusChange} 
+        currentStatus={job.status} 
+        newStatus={pendingStatusChange || ''} 
+      />
+      
       <EditJobModal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
-        jobData={jobDetails} 
+        jobData={job} 
       />
     </div>
   );

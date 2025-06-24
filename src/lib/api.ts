@@ -45,4 +45,46 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
   }
   
   return response.json();
+};
+
+// Jobs API functions
+export const getJobs = async () => {
+  return authenticatedFetch('/jobs');
+};
+
+export const getJobById = async (id: string) => {
+  console.log('getJobById called with id:', id, 'type:', typeof id);
+  if (!id || id === 'undefined') {
+    throw new Error('Invalid job ID provided');
+  }
+  return authenticatedFetch(`/jobs/${id}`);
+};
+
+export const createJob = async (jobData: any) => {
+  return authenticatedFetch('/jobs', {
+    method: 'POST',
+    body: JSON.stringify(jobData)
+  });
+};
+
+export const updateJob = async (id: string, jobData: any) => {
+  return authenticatedFetch(`/jobs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(jobData)
+  });
+};
+
+export const deleteJob = async (id: string) => {
+  return authenticatedFetch(`/jobs/${id}`, {
+    method: 'DELETE'
+  });
+};
+
+// Public jobs API for careers page
+export const getPublicJobs = async () => {
+  return publicFetch('/jobs/public');
+};
+
+export const getPublicJobById = async (id: string) => {
+  return publicFetch(`/jobs/public/${id}`);
 }; 

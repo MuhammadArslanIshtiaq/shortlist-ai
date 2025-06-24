@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   Briefcase, 
   Calendar,
@@ -10,95 +11,127 @@ import {
   Eye,
   Search,
   Filter,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { getJobs } from '@/lib/api';
 
-// Dummy data for jobs
-const jobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    postedDate: "2024-01-15",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    applications: 12,
-    shortlistedAI: 3,
-    status: "Active"
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    postedDate: "2024-01-14",
-    location: "New York, NY",
-    salary: "$130k - $160k",
-    applications: 8,
-    shortlistedAI: 2,
-    status: "Active"
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    postedDate: "2024-01-13",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    applications: 15,
-    shortlistedAI: 4,
-    status: "Active"
-  },
-  {
-    id: 4,
-    title: "UX Designer",
-    postedDate: "2024-01-12",
-    location: "Seattle, WA",
-    salary: "$100k - $130k",
-    applications: 6,
-    shortlistedAI: 1,
-    status: "Active"
-  },
-  {
-    id: 5,
-    title: "Backend Engineer",
-    postedDate: "2024-01-11",
-    location: "Remote",
-    salary: "$115k - $145k",
-    applications: 18,
-    shortlistedAI: 5,
-    status: "Active"
-  },
-  {
-    id: 6,
-    title: "DevOps Engineer",
-    postedDate: "2024-01-10",
-    location: "Boston, MA",
-    salary: "$125k - $155k",
-    applications: 9,
-    shortlistedAI: 2,
-    status: "Closed"
-  },
-  {
-    id: 7,
-    title: "Mobile Developer",
-    postedDate: "2024-01-09",
-    location: "Los Angeles, CA",
-    salary: "$105k - $135k",
-    applications: 11,
-    shortlistedAI: 3,
-    status: "Active"
-  },
-  {
-    id: 8,
-    title: "QA Engineer",
-    postedDate: "2024-01-08",
-    location: "Chicago, IL",
-    salary: "$95k - $125k",
-    applications: 7,
-    shortlistedAI: 1,
-    status: "Active"
-  }
-];
+// Type definition for Job
+interface Job {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  application_deadline: string | null;
+  createdAt: number;
+  status: string;
+  applications_count?: number;
+  shortlisted_ai_count?: number;
+  is_remote: boolean;
+  is_urgent: boolean;
+  jdBucket?: string;
+  jdKey?: string;
+}
 
 export default function Jobs() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const jobsData = await getJobs();
+      console.log('Jobs data received:', jobsData);
+      if (jobsData && jobsData.length > 0) {
+        console.log('First job:', jobsData[0]);
+        console.log('First job ID:', jobsData[0].id, 'type:', typeof jobsData[0].id);
+        console.log('All keys in first job:', Object.keys(jobsData[0]));
+        console.log('All values in first job:', Object.values(jobsData[0]));
+      }
+      setJobs(jobsData);
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+      setError('Failed to load jobs. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format salary range
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min && !job.salary_max) {
+      return 'Not specified';
+    }
+    
+    const currency = job.salary_currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency;
+    
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
+    }
+  };
+
+  // Filter jobs based on search term and status
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || job.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading jobs...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full">
+        <div className="max-w-full mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800">{error}</p>
+            <button 
+              onClick={fetchJobs}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-full">
       <div className="max-w-full mx-auto">
@@ -127,13 +160,22 @@ export default function Jobs() {
               <input
                 type="text"
                 placeholder="Search jobs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </button>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="closed">Closed</option>
+              <option value="draft">Draft</option>
+            </select>
           </div>
         </div>
 
@@ -154,64 +196,75 @@ export default function Jobs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <Briefcase className="w-5 h-5 text-gray-400 mr-3" />
-                        <span className="font-medium text-gray-900">{job.title}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-700">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(job.postedDate).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-700">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        {job.location}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-700">
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        {job.salary}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-700">
-                        <Users className="w-4 h-4 mr-1" />
-                        <span className="font-medium">{job.applications}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center text-gray-700">
-                        <Brain className="w-4 h-4 mr-1 text-purple-600" />
-                        <span className="font-medium text-purple-600">{job.shortlistedAI}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        job.status === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {job.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/jobs/${job.id}`}
-                        className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Details
-                      </Link>
+                {filteredJobs.length === 0 ? (
+                  <tr key="empty-state">
+                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                      {jobs.length === 0 ? 'No jobs found. Create your first job posting!' : 'No jobs match your search criteria.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredJobs.map((job) => (
+                    <tr key={job.jobId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <Briefcase className="w-5 h-5 text-gray-400 mr-3" />
+                          <div>
+                            <span className="font-medium text-gray-900">{job.title}</span>
+                            <p className="text-sm text-gray-500">{job.company}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {new Date(job.createdAt * 1000).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {job.is_remote ? `${job.location} (Remote)` : job.location}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          {formatSalary(job)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <Users className="w-4 h-4 mr-1" />
+                          <span className="font-medium">{job.applications_count || 0}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <Brain className="w-4 h-4 mr-1 text-purple-600" />
+                          <span className="font-medium text-purple-600">{job.shortlisted_ai_count || 0}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          job.status === 'OPEN' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {job.status === 'OPEN' ? 'Open' : 'Closed'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Link
+                          href={`/dashboard/jobs/${job.jobId}`}
+                          className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View Details
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -220,7 +273,7 @@ export default function Jobs() {
         {/* Pagination */}
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">8</span> of <span className="font-medium">8</span> results
+            Showing <span className="font-medium">{filteredJobs.length}</span> of <span className="font-medium">{jobs.length}</span> jobs
           </div>
           <div className="flex space-x-2">
             <button className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
