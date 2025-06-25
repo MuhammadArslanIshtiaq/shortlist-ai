@@ -12,7 +12,7 @@ import {
   ExternalLink,
   Loader2
 } from 'lucide-react';
-import { getJobs, getPublicJobs } from '@/lib/api';
+import { getPublicJobs } from '@/lib/api';
 
 // Type definition for Job
 interface Job {
@@ -35,22 +35,6 @@ interface Job {
   is_urgent: boolean;
 }
 
-// Simple public fetch function for careers page
-const publicFetch = async (endpoint: string) => {
-  const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
-  }
-  
-  return response.json();
-};
-
 export default function CareersPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,21 +51,27 @@ export default function CareersPage() {
     try {
       setLoading(true);
       setError(null);
-      // Try to use the public endpoint first, fallback to regular endpoint
-      let jobsData;
-      try {
-        jobsData = await publicFetch('/jobs/public');
-      } catch (err) {
-        // If public endpoint doesn't exist, try the regular endpoint
-        console.log('Public endpoint not available, trying regular endpoint...');
-        jobsData = await publicFetch('/jobs');
-      }
+      
+      console.log('Fetching public jobs...');
+      // Use the public jobs endpoint
+      const jobsData = await getPublicJobs();
+      console.log('Jobs data received:', jobsData);
+      
       // Filter to only show OPEN jobs
       const openJobs = jobsData.filter((job: Job) => job.status === 'OPEN');
+      console.log('Open jobs:', openJobs);
       setJobs(openJobs);
     } catch (err) {
       console.error('Failed to fetch jobs:', err);
-      setError('Failed to load jobs. Please try again.');
+      
+      // Check if it's an authentication error
+      if (err instanceof Error && err.message.includes('401')) {
+        setError('Jobs endpoint requires authentication. Please configure the /jobs GET endpoint to be public in your AWS API Gateway.');
+      } else if (err instanceof Error && err.message.includes('403')) {
+        setError('Access denied. Please configure the /jobs GET endpoint to be public in your AWS API Gateway.');
+      } else {
+        setError(`Failed to load jobs: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }

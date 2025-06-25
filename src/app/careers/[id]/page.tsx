@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { getPublicJobById, submitApplication } from '@/lib/api';
 
 // Type definition for Job
 interface Job {
@@ -45,22 +46,6 @@ interface Job {
   is_urgent: boolean;
 }
 
-// Simple public fetch function
-const publicFetch = async (endpoint: string) => {
-  const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.statusText}`);
-  }
-  
-  return response.json();
-};
-
 // Application Form Modal Component
 const ApplicationModal = ({ isOpen, onClose, job }: { 
   isOpen: boolean; 
@@ -75,12 +60,12 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
     location: '',
     linkedin: '',
     portfolio: '',
-    coverLetter: '',
     resume: null as File | null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -93,27 +78,109 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFormData(prev => ({
-        ...prev,
-        resume: file
-      }));
+      validateAndSetFile(file);
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('border-blue-500', 'bg-blue-50');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
+    
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      validateAndSetFile(file);
+    }
+  };
+
+  const validateAndSetFile = (file: File) => {
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a PDF, DOC, or DOCX file');
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      resume: file
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Manual validation
+    const errors: string[] = [];
+    
+    if (!formData.firstName.trim()) {
+      errors.push('First name is required');
+    }
+    
+    if (!formData.lastName.trim()) {
+      errors.push('Last name is required');
+    }
+    
+    if (!formData.email.trim()) {
+      errors.push('Email is required');
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.push('Please enter a valid email address');
+    }
+    
+    if (!formData.location.trim()) {
+      errors.push('Location is required');
+    }
+    
+    if (!formData.resume) {
+      errors.push('Please upload your resume');
+    }
+    
+    if (errors.length > 0) {
+      setSubmitError(errors.join(', '));
+      return;
+    }
+    
     setIsSubmitting(true);
     setSubmitError(null);
+    setUploadProgress('Preparing application...');
 
     try {
-      // Here you would typically submit the application to your API
-      // For now, we'll simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Submit the application using the real API
+      setUploadProgress('Getting upload URL...');
+      const result = await submitApplication({
+        jobId: job.jobId,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        location: formData.location,
+        linkedin: formData.linkedin || undefined,
+        portfolio: formData.portfolio || undefined,
+        resume: formData.resume!
+      });
+      
+      setUploadProgress('Uploading resume...');
       
       setSubmitSuccess(true);
       setTimeout(() => {
         onClose();
         setSubmitSuccess(false);
+        setUploadProgress('');
         setFormData({
           firstName: '',
           lastName: '',
@@ -122,12 +189,13 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
           location: '',
           linkedin: '',
           portfolio: '',
-          coverLetter: '',
           resume: null
         });
       }, 3000);
     } catch (error) {
-      setSubmitError('Failed to submit application. Please try again.');
+      console.error('Application submission error:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to submit application. Please try again.');
+      setUploadProgress('');
     } finally {
       setIsSubmitting(false);
     }
@@ -187,7 +255,6 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
                 value={formData.firstName}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
               />
             </div>
             <div>
@@ -198,7 +265,6 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
                 value={formData.lastName}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
               />
             </div>
             <div>
@@ -209,7 +275,6 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
               />
             </div>
             <div>
@@ -230,7 +295,6 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
                 value={formData.location}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
               />
             </div>
             <div>
@@ -260,7 +324,12 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Resume/CV *</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-colors"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
               <input
                 type="file"
@@ -268,7 +337,6 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
                 onChange={handleFileChange}
                 className="hidden"
                 id="resume-upload"
-                required
               />
               <label htmlFor="resume-upload" className="cursor-pointer">
                 <span className="text-blue-600 hover:text-blue-700 font-medium">
@@ -278,21 +346,26 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
               </label>
               <p className="text-sm text-gray-500 mt-1">PDF, DOC, or DOCX (max 10MB)</p>
               {formData.resume && (
-                <p className="text-sm text-green-600 mt-2">{formData.resume.name}</p>
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FileText className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-sm text-green-800 font-medium">{formData.resume.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, resume: null }))}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    {(formData.resume.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
               )}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Cover Letter</label>
-            <textarea
-              name="coverLetter"
-              value={formData.coverLetter}
-              onChange={handleInputChange}
-              rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Tell us why you're interested in this position and why you'd be a great fit..."
-            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
@@ -311,7 +384,7 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
+                  {uploadProgress}
                 </>
               ) : (
                 'Submit Application'
@@ -346,8 +419,10 @@ export default function JobDetailPage() {
       setLoading(true);
       setError(null);
       
-      // Use the regular endpoint since public endpoint might not exist yet
-      const jobData = await publicFetch(`/jobs/${jobId}`);
+      console.log('Fetching job with ID:', jobId);
+      // Use the public job endpoint
+      const jobData = await getPublicJobById(jobId);
+      console.log('Job data received:', jobData);
       
       // Check if job is open
       if (jobData.status !== 'OPEN') {
@@ -359,7 +434,15 @@ export default function JobDetailPage() {
       setJob(jobData);
     } catch (err) {
       console.error('Failed to fetch job:', err);
-      setError('Failed to load job details. Please try again.');
+      
+      // Check if it's an authentication error
+      if (err instanceof Error && err.message.includes('401')) {
+        setError('Job endpoint requires authentication. Please configure the /jobs/{jobId} GET endpoint to be public in your AWS API Gateway.');
+      } else if (err instanceof Error && err.message.includes('403')) {
+        setError('Access denied. Please configure the /jobs/{jobId} GET endpoint to be public in your AWS API Gateway.');
+      } else {
+        setError(`Failed to load job details: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }

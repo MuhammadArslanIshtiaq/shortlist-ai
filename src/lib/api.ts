@@ -118,11 +118,85 @@ export const deleteJob = async (id: string) => {
 
 // Public jobs API for careers page
 export const getPublicJobs = async () => {
-  return publicFetch('/jobs/public');
+  return publicFetch('/jobs');
 };
 
 export const getPublicJobById = async (id: string) => {
-  return publicFetch(`/jobs/public/${id}`);
+  return publicFetch(`/jobs/${id}`);
+};
+
+// Submit job application with file upload
+export const submitApplication = async (applicationData: {
+  jobId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  location: string;
+  linkedin?: string;
+  portfolio?: string;
+  resume: File;
+}) => {
+  const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+  
+  try {
+    // Step 1: Get presigned URL from Lambda
+    const presignedRequestData = {
+      jobId: applicationData.jobId,
+      fileName: applicationData.resume.name,
+      contentType: applicationData.resume.type,
+      firstName: applicationData.firstName,
+      lastName: applicationData.lastName,
+      email: applicationData.email,
+      phone: applicationData.phone || '',
+      location: applicationData.location,
+      linkedinUrl: applicationData.linkedin || '',
+      portfolioUrl: applicationData.portfolio || ''
+    };
+
+    console.log('Requesting presigned URL with data:', presignedRequestData);
+
+    const presignedResponse = await fetch(`${API_URL}/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(presignedRequestData)
+    });
+
+    if (!presignedResponse.ok) {
+      const errorBody = await presignedResponse.json();
+      throw new Error(errorBody.error || `Failed to get upload URL: ${presignedResponse.statusText}`);
+    }
+
+    const { applicantId, uploadUrl } = await presignedResponse.json();
+    console.log('Received presigned URL:', uploadUrl);
+
+    // Step 2: Upload file directly to S3 using presigned URL with the same Content-Type
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: applicationData.resume,
+      headers: {
+        'Content-Type': applicationData.resume.type,
+      }
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
+    }
+
+    console.log('File uploaded successfully to S3');
+
+    return {
+      applicantId,
+      success: true,
+      message: 'Application submitted successfully'
+    };
+
+  } catch (error) {
+    console.error('Application submission error:', error);
+    throw error;
+  }
 };
 
 // Type definition for Job (for reference)

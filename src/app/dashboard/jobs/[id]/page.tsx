@@ -154,7 +154,7 @@ const ActionDropdown = ({ candidateId, candidateName }: { candidateId: number; c
         </button>
         
         {isOpen && (
-        <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
             <div className="py-1">
               <button
               onClick={() => handleAction('Schedule Interview')}
@@ -199,7 +199,20 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
       experience: { score: 88, details: "5+ years frontend development" },
       education: { score: 90, details: "BS Computer Science, Stanford" },
       other: { score: 85, details: "Open source contributions, tech blog" },
-      resumeUrl: "https://example.com/resume1.pdf"
+      resumeUrl: "https://example.com/resume1.pdf",
+      summary: "Senior frontend developer with 5+ years of experience building scalable web applications. Strong expertise in React ecosystem and modern JavaScript frameworks. Proven track record of leading development teams and delivering high-quality products.",
+      strengths: [
+        "Excellent React/TypeScript skills",
+        "Strong problem-solving abilities",
+        "Experience with large-scale applications",
+        "Good communication and leadership",
+        "Active open source contributor"
+      ],
+      weaknesses: [
+        "Limited backend experience",
+        "Could improve DevOps knowledge",
+        "No mobile development experience"
+      ]
     },
     {
       id: 2,
@@ -212,7 +225,20 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
       experience: { score: 85, details: "4 years frontend development" },
       education: { score: 88, details: "MS Computer Science, UW" },
       other: { score: 82, details: "Conference speaker, mentor" },
-      resumeUrl: "https://example.com/resume2.pdf"
+      resumeUrl: "https://example.com/resume2.pdf",
+      summary: "Mid-level frontend developer with strong academic background and 4 years of practical experience. Excellent JavaScript fundamentals and good understanding of modern web development practices. Strong presentation and mentoring skills.",
+      strengths: [
+        "Solid JavaScript fundamentals",
+        "Strong academic background",
+        "Good presentation skills",
+        "Experience mentoring junior developers",
+        "Active in developer community"
+      ],
+      weaknesses: [
+        "Limited TypeScript experience",
+        "No experience with state management",
+        "Could improve testing practices"
+      ]
     },
     {
       id: 3,
@@ -225,7 +251,20 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
       experience: { score: 90, details: "6 years full-stack development" },
       education: { score: 85, details: "BS Software Engineering, UT" },
       other: { score: 80, details: "Team lead experience, agile certified" },
-      resumeUrl: "https://example.com/resume3.pdf"
+      resumeUrl: "https://example.com/resume3.pdf",
+      summary: "Experienced full-stack developer with 6 years of experience and strong leadership skills. Well-versed in both frontend and backend technologies. Certified agile practitioner with proven team leadership experience.",
+      strengths: [
+        "Full-stack development experience",
+        "Strong leadership and team management",
+        "Agile methodology expertise",
+        "Good testing practices",
+        "Experience with Redux and state management"
+      ],
+      weaknesses: [
+        "Frontend focus may be too broad",
+        "Could improve design system knowledge",
+        "Limited experience with newer frameworks"
+      ]
     }
   ];
 
@@ -301,6 +340,44 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
                         <span className="text-sm font-semibold text-orange-600">{candidate.other.score}</span>
                       </div>
                       <p className="text-xs text-gray-600">{candidate.other.details}</p>
+                    </div>
+                  </div>
+
+                  {/* Summary Section */}
+                  <div className="bg-white rounded-lg p-4 mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">AI Summary</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">{candidate.summary}</p>
+                  </div>
+
+                  {/* Strengths & Weaknesses */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="bg-white rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Key Strengths
+                      </h4>
+                      <ul className="space-y-1">
+                        {candidate.strengths.map((strength, index) => (
+                          <li key={index} className="text-sm text-gray-700 flex items-start">
+                            <span className="text-green-500 mr-2">•</span>
+                            {strength}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="bg-white rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                        Areas for Improvement
+                      </h4>
+                      <ul className="space-y-1">
+                        {candidate.weaknesses.map((weakness, index) => (
+                          <li key={index} className="text-sm text-gray-700 flex items-start">
+                            <span className="text-orange-500 mr-2">•</span>
+                            {weakness}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
 
@@ -1051,7 +1128,7 @@ export default function JobDetail() {
                   </button>
                   
                   {jobStatusMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                       <div className="py-1">
                         <button
                           onClick={() => handleJobStatusChange('OPEN')}
