@@ -31,13 +31,13 @@ const menuItems = [
     href: '/dashboard/jobs',
   },
   {
-    name: 'Candidates',
+    name: 'Applicants',
     icon: Users,
-    href: '/dashboard/candidates',
+    href: '/dashboard/applicants',
     submenu: [
-      { name: 'All Candidates', href: '/dashboard/candidates' },
-      { name: 'Shortlisted Candidates', href: '/dashboard/candidates/shortlisted' },
-      { name: 'Talent Pool', href: '/dashboard/candidates/talent-pool' }
+      { name: 'All Applicants', href: '/dashboard/applicants' },
+      { name: 'Shortlisted Applicants', href: '/dashboard/applicants/shortlisted' },
+      { name: 'Talent Pool', href: '/dashboard/applicants/talent-pool' }
     ]
   },
   {

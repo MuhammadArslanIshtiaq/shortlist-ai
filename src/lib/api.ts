@@ -199,6 +199,16 @@ export const submitApplication = async (applicationData: {
   }
 };
 
+// Applicants API functions
+export const getApplicants = async () => {
+  return authenticatedFetch('/applicants');
+};
+
+// Get pre-signed URL for viewing resume
+export const getResumeDownloadUrl = async (applicantId: string) => {
+  return authenticatedFetch(`/applicants/${applicantId}/resume`);
+};
+
 // Type definition for Job (for reference)
 interface Job {
   jobId: string;
@@ -222,4 +232,33 @@ interface Job {
   is_urgent: boolean;
   jdBucket?: string;
   jdKey?: string;
+}
+
+// Type definition for Applicant
+export interface Applicant {
+  applicantId: string;
+  jobId: string;
+  jobTitle?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  location: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  resumeS3Uri?: string;
+  applicationStatus: string;
+  matchingScore?: number;
+  submittedAt: number;
+  analysis?: {
+    overallScore: number;
+    scoreBreakdown: {
+      educationMatch: number;
+      experienceMatch: number;
+      skillsMatch: number;
+    };
+    strengths: string[];
+    weaknesses: string[];
+    summary: string;
+  };
 } 
