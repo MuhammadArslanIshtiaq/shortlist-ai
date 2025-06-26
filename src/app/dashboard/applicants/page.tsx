@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getApplicants, Applicant, getResumeDownloadUrl } from '@/lib/api';
+import { getApplicants, Applicant, getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
 import { getJobById } from '@/lib/api';
 
 // Filter Modal Component
@@ -199,38 +199,37 @@ const CircularProgress = ({ score }: { score: number }) => {
 // Status Indicator Component
 const StatusIndicator = ({ status }: { status: string }) => {
   const getStatusInfo = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'shortlisted':
+    switch (status) {
+      case 'SHORTLISTED':
         return {
           label: 'Shortlisted',
           bgColor: 'bg-purple-100',
           textColor: 'text-purple-800',
           icon: <Check className="w-3 h-3" />
         };
-      case 'talentpool':
-      case 'talent pool':
+      case 'TALENT_POOL':
         return {
           label: 'Talent Pool',
           bgColor: 'bg-blue-100',
           textColor: 'text-blue-800',
           icon: <UserPlus className="w-3 h-3" />
         };
-      case 'applied':
-      case 'submitted':
+      case 'APPLIED':
+      case 'SUBMITTED':
         return {
           label: 'Applied',
           bgColor: 'bg-gray-100',
           textColor: 'text-gray-800',
           icon: <FileText className="w-3 h-3" />
         };
-      case 'reviewed':
+      case 'REVIEWED':
         return {
           label: 'Reviewed',
           bgColor: 'bg-yellow-100',
           textColor: 'text-yellow-800',
           icon: <FileText className="w-3 h-3" />
         };
-      case 'rejected':
+      case 'REJECTED':
         return {
           label: 'Rejected',
           bgColor: 'bg-red-100',
@@ -319,7 +318,12 @@ const PopupMessage = ({
 };
 
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; currentStatus: string }) => {
+const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+  applicantId: string; 
+  jobId: string;
+  currentStatus: string;
+  onStatusUpdate?: (newStatus: string) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [popupConfig, setPopupConfig] = useState({
     isOpen: false,
@@ -328,43 +332,64 @@ const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; c
     type: 'info' as 'success' | 'info' | 'warning'
   });
 
-  const handleAction = (action: string) => {
+  const handleAction = async (action: string) => {
     console.log(`${action} for applicant ${applicantId}`);
     setIsOpen(false);
     
-    // Show appropriate popup message
-    switch (action) {
-      case 'shortlist':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Applicant Shortlisted',
-          message: 'The applicant has been shortlisted for interview.',
-          type: 'success'
-        });
-        break;
-      case 'talentpool':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Added to Talent Pool',
-          message: 'The applicant has been added to the talent pool.',
-          type: 'success'
-        });
-        break;
-      case 'reject':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Applicant Rejected',
-          message: 'The applicant has been marked as not moving forward.',
-          type: 'warning'
-        });
-        break;
-      default:
-        setPopupConfig({
-          isOpen: true,
-          title: 'Action Completed',
-          message: 'The action has been completed successfully.',
-          type: 'info'
-        });
+    try {
+      let newStatus = '';
+      let popupTitle = '';
+      let popupMessage = '';
+      let popupType: 'success' | 'info' | 'warning' = 'info';
+      
+      // Determine new status and popup configuration
+      switch (action) {
+        case 'shortlist':
+          newStatus = 'SHORTLISTED';
+          popupTitle = 'Applicant Shortlisted';
+          popupMessage = 'The applicant has been shortlisted for interview.';
+          popupType = 'success';
+          break;
+        case 'talentpool':
+          newStatus = 'TALENT_POOL';
+          popupTitle = 'Added to Talent Pool';
+          popupMessage = 'The applicant has been added to the talent pool.';
+          popupType = 'success';
+          break;
+        case 'reject':
+          newStatus = 'REJECTED';
+          popupTitle = 'Applicant Rejected';
+          popupMessage = 'The applicant has been marked as not moving forward.';
+          popupType = 'warning';
+          break;
+        default:
+          return;
+      }
+      
+      // Update status in database
+      await updateApplicantStatus(applicantId, jobId, newStatus);
+      
+      // Show success popup
+      setPopupConfig({
+        isOpen: true,
+        title: popupTitle,
+        message: popupMessage,
+        type: popupType
+      });
+      
+      // Call the callback to update the UI
+      if (onStatusUpdate) {
+        onStatusUpdate(newStatus);
+      }
+      
+    } catch (error) {
+      console.error('Failed to update applicant status:', error);
+      setPopupConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update applicant status. Please try again.',
+        type: 'warning'
+      });
     }
   };
 
@@ -516,6 +541,15 @@ export default function AllApplicants() {
     return matchesSearch && matchesJob && matchesLocation && matchesScore;
   });
 
+  // Function to handle status updates
+  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
+    setApplicants(prev => prev.map(applicant => 
+      applicant.applicantId === applicantId 
+        ? { ...applicant, applicationStatus: newStatus }
+        : applicant
+    ));
+  };
+
   // Function to handle resume viewing
   const handleViewResume = async (applicantId: string) => {
     try {
@@ -663,7 +697,9 @@ export default function AllApplicants() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <ActionDropdown applicantId={applicant.applicantId} currentStatus={applicant.applicationStatus} />
+                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                          handleStatusUpdate(applicant.applicantId, newStatus);
+                        }} />
                       </td>
                     </tr>
                   ))

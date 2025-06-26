@@ -154,7 +154,7 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
       setSubmitError(errors.join(', '));
       return;
     }
-    
+
     setIsSubmitting(true);
     setSubmitError(null);
     setUploadProgress('Preparing application...');
@@ -166,7 +166,7 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
         jobId: job.jobId,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email,
+          email: formData.email,
         phone: formData.phone || undefined,
         location: formData.location,
         linkedin: formData.linkedin || undefined,
@@ -537,7 +537,7 @@ export default function JobDetailPage() {
                     Urgent Hiring
                   </span>
                 )}
-              </div>
+        </div>
 
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{job.title}</h1>
                   <div className="flex items-center text-gray-600 mb-4">

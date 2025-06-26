@@ -18,7 +18,7 @@ import {
   Star
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getApplicants, Applicant, getResumeDownloadUrl } from '@/lib/api';
+import { getApplicants, Applicant, getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
 import { getJobById } from '@/lib/api';
 
 // Filter Modal Component
@@ -198,7 +198,12 @@ const CircularProgress = ({ score }: { score: number }) => {
 };
 
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; currentStatus: string }) => {
+const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+  applicantId: string; 
+  jobId: string;
+  currentStatus: string;
+  onStatusUpdate?: (newStatus: string) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [popupConfig, setPopupConfig] = useState({
     isOpen: false,
@@ -207,43 +212,68 @@ const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; c
     type: 'info' as 'success' | 'info' | 'warning'
   });
 
-  const handleAction = (action: string) => {
+  const handleAction = async (action: string) => {
     console.log(`${action} for applicant ${applicantId}`);
     setIsOpen(false);
     
-    // Show appropriate popup message
-    switch (action) {
-      case 'schedule':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Interview Scheduled',
-          message: 'The interview has been scheduled successfully.',
-          type: 'success'
-        });
-        break;
-      case 'talentpool':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Added to Talent Pool',
-          message: 'The applicant has been added to the talent pool.',
-          type: 'success'
-        });
-        break;
-      case 'reject':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Applicant Rejected',
-          message: 'The applicant has been marked as not moving forward.',
-          type: 'warning'
-        });
-        break;
-      default:
-        setPopupConfig({
-          isOpen: true,
-          title: 'Action Completed',
-          message: 'The action has been completed successfully.',
-          type: 'info'
-        });
+    try {
+      let newStatus = '';
+      let popupTitle = '';
+      let popupMessage = '';
+      let popupType: 'success' | 'info' | 'warning' = 'info';
+      let shouldUpdateStatus = true;
+      
+      // Determine new status and popup configuration
+      switch (action) {
+        case 'schedule':
+          // Special case: show popup but don't update status in database
+          popupTitle = 'Interview Scheduled';
+          popupMessage = 'The interview has been scheduled successfully.';
+          popupType = 'success';
+          shouldUpdateStatus = false;
+          break;
+        case 'talentpool':
+          newStatus = 'TALENT_POOL';
+          popupTitle = 'Added to Talent Pool';
+          popupMessage = 'The applicant has been added to the talent pool.';
+          popupType = 'success';
+          break;
+        case 'reject':
+          newStatus = 'REJECTED';
+          popupTitle = 'Applicant Rejected';
+          popupMessage = 'The applicant has been marked as not moving forward.';
+          popupType = 'warning';
+          break;
+        default:
+          return;
+      }
+      
+      // Update status in database only if needed
+      if (shouldUpdateStatus) {
+        await updateApplicantStatus(applicantId, jobId, newStatus);
+        
+        // Call the callback to update the UI
+        if (onStatusUpdate) {
+          onStatusUpdate(newStatus);
+        }
+      }
+      
+      // Show success popup
+      setPopupConfig({
+        isOpen: true,
+        title: popupTitle,
+        message: popupMessage,
+        type: popupType
+      });
+      
+    } catch (error) {
+      console.error('Failed to update applicant status:', error);
+      setPopupConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update applicant status. Please try again.',
+        type: 'warning'
+      });
     }
   };
 
@@ -372,7 +402,7 @@ export default function ShortlistedApplicants() {
       const data = await getApplicants();
       // Filter for shortlisted applicants
       const shortlistedApplicants = data.filter((applicant: Applicant) => 
-        applicant.applicationStatus.toLowerCase() === 'shortlisted'
+        applicant.applicationStatus === 'SHORTLISTED'
       );
       
       // Fetch job titles for shortlisted applicants
@@ -428,6 +458,14 @@ export default function ShortlistedApplicants() {
     } catch (error) {
       console.error('Failed to get resume download URL:', error);
       alert('Failed to open resume. Please try again.');
+    }
+  };
+
+  // Function to handle status updates
+  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
+    // If the status is no longer SHORTLISTED, remove the applicant from the list
+    if (newStatus !== 'SHORTLISTED') {
+      setApplicants(prev => prev.filter(applicant => applicant.applicantId !== applicantId));
     }
   };
 
@@ -563,7 +601,9 @@ export default function ShortlistedApplicants() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <ActionDropdown applicantId={applicant.applicantId} currentStatus={applicant.applicationStatus} />
+                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                          handleStatusUpdate(applicant.applicantId, newStatus);
+                        }} />
                       </td>
                     </tr>
                   ))

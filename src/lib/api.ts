@@ -204,13 +204,42 @@ export const getApplicants = async () => {
   return authenticatedFetch('/applicants');
 };
 
+// Update applicant status
+export const updateApplicantStatus = async (applicantId: string, jobId: string, status: string) => {
+  try {
+    const token = await getAuthToken();
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    
+    if (token) {
+      headers.set('Authorization', `${token}`);
+    }
+    
+    const response = await fetch(`${API_URL}/applicants/${applicantId}/${jobId}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status })
+    });
+    
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.error || `API call failed: ${response.statusText}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('Update applicant status error:', error);
+    throw error;
+  }
+};
+
 // Get pre-signed URL for viewing resume
 export const getResumeDownloadUrl = async (applicantId: string) => {
   return authenticatedFetch(`/applicants/${applicantId}/resume`);
 };
 
 // Type definition for Job (for reference)
-interface Job {
+export interface Job {
   jobId: string;
   title: string;
   company: string;

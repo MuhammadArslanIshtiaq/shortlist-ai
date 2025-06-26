@@ -15,7 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
-import { getJobs } from '@/lib/api';
+import { getJobs, getApplicants, Applicant } from '@/lib/api';
 
 // Type definition for Job
 interface Job {
@@ -51,6 +51,7 @@ export default function Jobs() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [applicantCounts, setApplicantCounts] = useState<{ [jobId: string]: number }>({});
 
   useEffect(() => {
     fetchJobs();
@@ -69,11 +70,32 @@ export default function Jobs() {
         console.log('All values in first job:', Object.values(jobsData[0]));
       }
       setJobs(jobsData);
+      
+      // Fetch applicant counts for all jobs
+      await fetchApplicantCounts(jobsData);
     } catch (err) {
       console.error('Failed to fetch jobs:', err);
       setError('Failed to load jobs. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApplicantCounts = async (jobsData: Job[]) => {
+    try {
+      const allApplicants = await getApplicants();
+      const counts: { [jobId: string]: number } = {};
+      
+      // Count applicants for each job
+      jobsData.forEach(job => {
+        const jobApplicants = allApplicants.filter((applicant: Applicant) => applicant.jobId === job.jobId);
+        counts[job.jobId] = jobApplicants.length;
+      });
+      
+      setApplicantCounts(counts);
+    } catch (err) {
+      console.error('Failed to fetch applicant counts:', err);
+      // Don't set error here as it's not critical for the main jobs display
     }
   };
 
@@ -166,8 +188,8 @@ export default function Jobs() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
+              <input
+                type="text"
                   placeholder="Search jobs, companies, or keywords..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -230,7 +252,6 @@ export default function Jobs() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Salary</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applications</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Shortlisted AI</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
@@ -238,33 +259,33 @@ export default function Jobs() {
               <tbody className="divide-y divide-gray-200">
                 {filteredJobs.length === 0 ? (
                   <tr key="empty-state">
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       {jobs.length === 0 ? 'No jobs found. Create your first job posting!' : 'No jobs match your search criteria.'}
                     </td>
                   </tr>
                 ) : (
                   filteredJobs.map((job) => (
                     <tr key={job.jobId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <Briefcase className="w-5 h-5 text-gray-400 mr-3" />
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <Briefcase className="w-5 h-5 text-gray-400 mr-3" />
                           <div>
-                            <span className="font-medium text-gray-900">{job.title}</span>
+                        <span className="font-medium text-gray-900">{job.title}</span>
                             <p className="text-sm text-gray-500">{job.company}</p>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <Calendar className="w-4 h-4 mr-1" />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center text-gray-700">
+                        <Calendar className="w-4 h-4 mr-1" />
                           {new Date(job.createdAt * 1000).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {job.location}
-                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center text-gray-700">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {job.location}
+                      </div>
                         <div className="flex items-center text-gray-500 text-sm mt-1">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             job.work_arrangement === 'Remote' 
@@ -276,44 +297,38 @@ export default function Jobs() {
                             {job.work_arrangement}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <DollarSign className="w-4 h-4 mr-1" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center text-gray-700">
+                        <DollarSign className="w-4 h-4 mr-1" />
                           {formatSalary(job)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <Users className="w-4 h-4 mr-1" />
-                          <span className="font-medium">{job.applications_count || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <Brain className="w-4 h-4 mr-1 text-purple-600" />
-                          <span className="font-medium text-purple-600">{job.shortlisted_ai_count || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center text-gray-700">
+                        <Users className="w-4 h-4 mr-1" />
+                          <span className="font-medium">{applicantCounts[job.jobId] || 0}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           job.status === 'OPEN' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
                           {job.status === 'OPEN' ? 'Open' : 'Closed'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Link
                           href={`/dashboard/jobs/${job.jobId}`}
-                          className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
-                        </Link>
-                      </td>
-                    </tr>
+                        className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Details
+                      </Link>
+                    </td>
+                  </tr>
                   ))
                 )}
               </tbody>

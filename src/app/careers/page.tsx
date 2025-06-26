@@ -283,7 +283,7 @@ export default function CareersPage() {
                       <div className="flex items-center text-gray-600">
                         <Calendar className="w-4 h-4 mr-2" />
                           Posted {new Date(job.createdAt * 1000).toLocaleDateString()}
-                        </div>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-4">

@@ -28,11 +28,12 @@ import {
   UserX,
   Save,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getJobById, updateJob, deleteJob } from '@/lib/api';
+import { getJobById, updateJob, deleteJob, getApplicants, getResumeDownloadUrl, updateApplicantStatus, Applicant } from '@/lib/api';
 
 // Type definition for Job
 interface Job {
@@ -114,24 +115,155 @@ const CircularProgress = ({ score, size = 60 }: { score: number; size?: number }
   );
 };
 
-// Action Dropdown Component
-const ActionDropdown = ({ candidateId, candidateName }: { candidateId: number; candidateName: string }) => {
-  const [isOpen, setIsOpen] = useState(false);
+// Popup Message Component
+const PopupMessage = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  message, 
+  type 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  title: string; 
+  message: string; 
+  type: 'success' | 'info' | 'warning' 
+}) => {
+  if (!isOpen) return null;
 
-  const handleAction = (action: string) => {
-    console.log(`${action} for candidate ${candidateName} (ID: ${candidateId})`);
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <Check className="w-5 h-5 text-green-600" />;
+      case 'warning':
+        return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      default:
+        return <AlertCircle className="w-5 h-5 text-blue-600" />;
+    }
+  };
+
+  const getBgColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'warning':
+        return 'bg-orange-50 border-orange-200';
+      default:
+        return 'bg-blue-50 border-blue-200';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className={`bg-white rounded-lg shadow-xl max-w-md w-full border ${getBgColor()}`}>
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              type === 'success' ? 'bg-green-100' : type === 'warning' ? 'bg-orange-100' : 'bg-blue-100'
+            }`}>
+              {getIcon()}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          </div>
+          <p className="text-gray-600 mb-6">{message}</p>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Action Dropdown Component
+const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+  applicantId: string; 
+  jobId: string;
+  currentStatus: string;
+  onStatusUpdate?: (newStatus: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [popupConfig, setPopupConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'info' | 'warning'
+  });
+
+  const handleAction = async (action: string) => {
+    console.log(`${action} for applicant ${applicantId}`);
     setIsOpen(false);
-    // Here you would typically make an API call to perform the action
+    
+    try {
+      let newStatus = '';
+      let popupTitle = '';
+      let popupMessage = '';
+      let popupType: 'success' | 'info' | 'warning' = 'info';
+      
+      // Determine new status and popup configuration
+      switch (action) {
+        case 'shortlist':
+          newStatus = 'SHORTLISTED';
+          popupTitle = 'Applicant Shortlisted';
+          popupMessage = 'The applicant has been shortlisted for interview.';
+          popupType = 'success';
+          break;
+        case 'talentpool':
+          newStatus = 'TALENT_POOL';
+          popupTitle = 'Added to Talent Pool';
+          popupMessage = 'The applicant has been added to the talent pool.';
+          popupType = 'success';
+          break;
+        case 'reject':
+          newStatus = 'REJECTED';
+          popupTitle = 'Applicant Rejected';
+          popupMessage = 'The applicant has been marked as not moving forward.';
+          popupType = 'warning';
+          break;
+        default:
+          return;
+      }
+      
+      // Update status in database
+      await updateApplicantStatus(applicantId, jobId, newStatus);
+      
+      // Show success popup
+      setPopupConfig({
+        isOpen: true,
+        title: popupTitle,
+        message: popupMessage,
+        type: popupType
+      });
+      
+      // Call the callback to update the UI
+      if (onStatusUpdate) {
+        onStatusUpdate(newStatus);
+      }
+      
+    } catch (error) {
+      console.error('Failed to update applicant status:', error);
+      setPopupConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update applicant status. Please try again.',
+        type: 'warning'
+      });
+    }
   };
 
   const closePopup = () => {
-    setIsOpen(false);
+    setPopupConfig(prev => ({ ...prev, isOpen: false }));
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen) {
-        closePopup();
+        setIsOpen(false);
       }
     };
 
@@ -142,131 +274,177 @@ const ActionDropdown = ({ candidateId, candidateName }: { candidateId: number; c
   }, [isOpen]);
 
   return (
+    <>
       <div className="relative">
         <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
         
         {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
             <div className="py-1">
               <button
-              onClick={() => handleAction('Schedule Interview')}
+                onClick={() => handleAction('shortlist')}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-              <Calendar className="w-4 h-4 mr-2" />
-              Schedule Interview
+                <UserCheck className="w-4 h-4 mr-2 text-green-600" />
+                Shortlist for interview
               </button>
               <button
-              onClick={() => handleAction('Add to Talent Pool')}
+                onClick={() => handleAction('talentpool')}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add to Talent Pool
+                <UserPlus className="w-4 h-4 mr-2 text-blue-600" />
+                Add to Talent Pool
               </button>
               <button
-              onClick={() => handleAction('Reject')}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                onClick={() => handleAction('reject')}
+                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-              <UserX className="w-4 h-4 mr-2" />
-              Reject
+                <UserX className="w-4 h-4 mr-2 text-red-600" />
+                Not Moving Forward
               </button>
             </div>
           </div>
         )}
       </div>
+
+      <PopupMessage
+        isOpen={popupConfig.isOpen}
+        onClose={closePopup}
+        title={popupConfig.title}
+        message={popupConfig.message}
+        type={popupConfig.type}
+      />
+    </>
   );
 };
 
 // Shortlisted Candidates Modal Component
-const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  // For now, we'll use dummy data for candidates since we haven't implemented the candidates API yet
-  const shortlistedCandidates = [
-    {
-      id: 1,
-      rank: 1,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      location: "San Francisco, CA",
-      overallScore: 92,
-      skills: { score: 95, details: "React, TypeScript, Next.js, CSS3" },
-      experience: { score: 88, details: "5+ years frontend development" },
-      education: { score: 90, details: "BS Computer Science, Stanford" },
-      other: { score: 85, details: "Open source contributions, tech blog" },
-      resumeUrl: "https://example.com/resume1.pdf",
-      summary: "Senior frontend developer with 5+ years of experience building scalable web applications. Strong expertise in React ecosystem and modern JavaScript frameworks. Proven track record of leading development teams and delivering high-quality products.",
-      strengths: [
-        "Excellent React/TypeScript skills",
-        "Strong problem-solving abilities",
-        "Experience with large-scale applications",
-        "Good communication and leadership",
-        "Active open source contributor"
-      ],
-      weaknesses: [
-        "Limited backend experience",
-        "Could improve DevOps knowledge",
-        "No mobile development experience"
-      ]
-    },
-    {
-      id: 2,
-      rank: 2,
-      name: "Michael Chen",
-      email: "michael.chen@email.com",
-      location: "Seattle, WA",
-      overallScore: 89,
-      skills: { score: 92, details: "React, JavaScript, HTML5, CSS3" },
-      experience: { score: 85, details: "4 years frontend development" },
-      education: { score: 88, details: "MS Computer Science, UW" },
-      other: { score: 82, details: "Conference speaker, mentor" },
-      resumeUrl: "https://example.com/resume2.pdf",
-      summary: "Mid-level frontend developer with strong academic background and 4 years of practical experience. Excellent JavaScript fundamentals and good understanding of modern web development practices. Strong presentation and mentoring skills.",
-      strengths: [
-        "Solid JavaScript fundamentals",
-        "Strong academic background",
-        "Good presentation skills",
-        "Experience mentoring junior developers",
-        "Active in developer community"
-      ],
-      weaknesses: [
-        "Limited TypeScript experience",
-        "No experience with state management",
-        "Could improve testing practices"
-      ]
-    },
-    {
-      id: 3,
-      rank: 3,
-      name: "Emily Rodriguez",
-      email: "emily.rodriguez@email.com",
-      location: "Austin, TX",
-      overallScore: 87,
-      skills: { score: 88, details: "React, TypeScript, Redux, Jest" },
-      experience: { score: 90, details: "6 years full-stack development" },
-      education: { score: 85, details: "BS Software Engineering, UT" },
-      other: { score: 80, details: "Team lead experience, agile certified" },
-      resumeUrl: "https://example.com/resume3.pdf",
-      summary: "Experienced full-stack developer with 6 years of experience and strong leadership skills. Well-versed in both frontend and backend technologies. Certified agile practitioner with proven team leadership experience.",
-      strengths: [
-        "Full-stack development experience",
-        "Strong leadership and team management",
-        "Agile methodology expertise",
-        "Good testing practices",
-        "Experience with Redux and state management"
-      ],
-      weaknesses: [
-        "Frontend focus may be too broad",
-        "Could improve design system knowledge",
-        "Limited experience with newer frameworks"
-      ]
+const ShortlistedCandidatesModal = ({ isOpen, onClose, jobId }: { isOpen: boolean; onClose: () => void; jobId: string }) => {
+  const [shortlistedApplicants, setShortlistedApplicants] = useState<Applicant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const itemsPerPage = 5;
+
+  // Function to handle resume viewing
+  const handleViewResume = async (applicantId: string) => {
+    try {
+      const { downloadUrl } = await getResumeDownloadUrl(applicantId);
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to get resume download URL:', error);
+      alert('Failed to open resume. Please try again.');
     }
-  ];
+  };
+
+  // Function to handle status updates
+  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
+    setShortlistedApplicants(prev => prev.map(applicant => 
+      applicant.applicantId === applicantId 
+        ? { ...applicant, applicationStatus: newStatus }
+        : applicant
+    ));
+  };
+
+  // Fetch all applicants for this specific job
+  useEffect(() => {
+    if (isOpen && jobId) {
+      const fetchAllApplicants = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          setCurrentPage(1);
+          const allApplicants = await getApplicants();
+          // Filter applicants for this specific job (all statuses)
+          const jobApplicants = allApplicants.filter((applicant: Applicant) => 
+            applicant.jobId === jobId
+          );
+          
+          // Sort by highest matching score (descending)
+          const sortedApplicants = jobApplicants.sort((a: Applicant, b: Applicant) => {
+            const scoreA = a.matchingScore || 0;
+            const scoreB = b.matchingScore || 0;
+            return scoreB - scoreA;
+          });
+          
+          setShortlistedApplicants(sortedApplicants);
+          setHasMore(sortedApplicants.length > itemsPerPage);
+        } catch (err) {
+          console.error('Failed to fetch applicants:', err);
+          setError('Failed to load applicants. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchAllApplicants();
+    }
+  }, [isOpen, jobId]);
+
+  // Get current page applicants
+  const getCurrentPageApplicants = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return shortlistedApplicants.slice(startIndex, startIndex + itemsPerPage);
+  };
+
+  // Load more applicants
+  const loadMore = () => {
+    setCurrentPage(prev => prev + 1);
+  };
+
+  // Check if there are more applicants to load
+  const hasMoreApplicants = currentPage * itemsPerPage < shortlistedApplicants.length;
+
+  // Function to get status display info
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'SHORTLISTED':
+        return {
+          label: 'Shortlisted',
+          bgColor: 'bg-purple-100',
+          textColor: 'text-purple-800',
+          icon: <Check className="w-3 h-3" />
+        };
+      case 'TALENT_POOL':
+        return {
+          label: 'Talent Pool',
+          bgColor: 'bg-blue-100',
+          textColor: 'text-blue-800',
+          icon: <UserPlus className="w-3 h-3" />
+        };
+      case 'REJECTED':
+        return {
+          label: 'Rejected',
+          bgColor: 'bg-red-100',
+          textColor: 'text-red-800',
+          icon: <UserX className="w-3 h-3" />
+        };
+      case 'APPLIED':
+      case 'SUBMITTED':
+        return {
+          label: 'Applied',
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-800',
+          icon: <FileText className="w-3 h-3" />
+        };
+      default:
+        return {
+          label: status,
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-800',
+          icon: <FileText className="w-3 h-3" />
+        };
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -279,7 +457,7 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
             <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <Brain className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">AI Shortlisted Candidates</h2>
+            <h2 className="text-xl font-semibold text-gray-900">AI Shortlisted Applicants</h2>
           </div>
           <button
             onClick={onClose}
@@ -292,119 +470,213 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
         {/* Modal Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
           <div className="p-6">
-            <div className="grid gap-6">
-                  {shortlistedCandidates.map((candidate) => (
-                <div key={candidate.id} className="bg-gray-50 rounded-xl p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        #{candidate.rank}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{candidate.name}</h3>
-                        <p className="text-gray-600">{candidate.email}</p>
-                        <p className="text-sm text-gray-500">{candidate.location}</p>
-                      </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                  <span className="text-gray-600">Loading applicants...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800">{error}</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-6">
+                  {getCurrentPageApplicants().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No applicants found for this job.
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <CircularProgress score={candidate.overallScore} />
-                      <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Skills</span>
-                        <span className="text-sm font-semibold text-blue-600">{candidate.skills.score}</span>
-                          </div>
-                      <p className="text-xs text-gray-600">{candidate.skills.details}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Experience</span>
-                        <span className="text-sm font-semibold text-green-600">{candidate.experience.score}</span>
-                      </div>
-                      <p className="text-xs text-gray-600">{candidate.experience.details}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Education</span>
-                        <span className="text-sm font-semibold text-purple-600">{candidate.education.score}</span>
-                      </div>
-                      <p className="text-xs text-gray-600">{candidate.education.details}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Other</span>
-                        <span className="text-sm font-semibold text-orange-600">{candidate.other.score}</span>
-                      </div>
-                      <p className="text-xs text-gray-600">{candidate.other.details}</p>
-                    </div>
-                  </div>
-
-                  {/* Summary Section */}
-                  <div className="bg-white rounded-lg p-4 mb-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">AI Summary</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">{candidate.summary}</p>
-                  </div>
-
-                  {/* Strengths & Weaknesses */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-white rounded-lg p-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                        Key Strengths
-                      </h4>
-                      <ul className="space-y-1">
-                        {candidate.strengths.map((strength, index) => (
-                          <li key={index} className="text-sm text-gray-700 flex items-start">
-                            <span className="text-green-500 mr-2">•</span>
-                            {strength}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="bg-white rounded-lg p-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                        Areas for Improvement
-                      </h4>
-                      <ul className="space-y-1">
-                        {candidate.weaknesses.map((weakness, index) => (
-                          <li key={index} className="text-sm text-gray-700 flex items-start">
-                            <span className="text-orange-500 mr-2">•</span>
-                            {weakness}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                          <a
-                            href={candidate.resumeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            View Resume
-                          </a>
-                    <div className="flex space-x-2">
-                      <button className="inline-flex items-center px-3 py-1.5 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium">
-                        <UserCheck className="w-4 h-4 mr-1" />
-                        Shortlist
-                      </button>
-                      <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        Schedule Interview
-                      </button>
-                                </div>
+                  ) : (
+                    getCurrentPageApplicants().map((applicant, index) => {
+                      const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                      const statusInfo = getStatusDisplay(applicant.applicationStatus);
+                      return (
+                        <div key={applicant.applicantId} className="bg-gray-50 rounded-xl p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                #{globalIndex + 1}
                               </div>
-                                </div>
-              ))}
-            </div>
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                  {applicant.firstName} {applicant.lastName}
+                                </h3>
+                                <p className="text-gray-600">{applicant.email}</p>
+                                <p className="text-sm text-gray-500">{applicant.location}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              {applicant.matchingScore && (
+                                <CircularProgress score={applicant.matchingScore} />
+                              )}
+                              <ActionDropdown 
+                                applicantId={applicant.applicantId} 
+                                jobId={applicant.jobId} 
+                                currentStatus={applicant.applicationStatus} 
+                                onStatusUpdate={(newStatus) => {
+                                  handleStatusUpdate(applicant.applicantId, newStatus);
+                                }} 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <div className="bg-white rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">Skills</span>
+                                {applicant.analysis?.scoreBreakdown?.skillsMatch && (
+                                  <CircularProgress score={Number(applicant.analysis.scoreBreakdown.skillsMatch)} size={40} />
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600">Skills match score</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">Education</span>
+                                {applicant.analysis?.scoreBreakdown?.educationMatch && (
+                                  <CircularProgress score={Number(applicant.analysis.scoreBreakdown.educationMatch)} size={40} />
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600">Education match score</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-700">Experience</span>
+                                {applicant.analysis?.scoreBreakdown?.experienceMatch && (
+                                  <CircularProgress score={Number(applicant.analysis.scoreBreakdown.experienceMatch)} size={40} />
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600">Experience match score</p>
+                            </div>
+                          </div>
+
+                          {/* Summary Section */}
+                          <div className="bg-white rounded-lg p-4 mb-4">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-2">AI Summary</h4>
+                            <p className="text-sm text-gray-700 leading-relaxed">
+                              {applicant.analysis?.summary || 
+                                (applicant.matchingScore ? 
+                                  `Applicant with ${applicant.matchingScore}% match score. Strong candidate for this position.` : 
+                                  'Applicant has been shortlisted for this position.'
+                                )
+                              }
+                            </p>
+                          </div>
+
+                          {/* Strengths & Weaknesses */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                Key Strengths
+                              </h4>
+                              <ul className="space-y-1">
+                                {applicant.analysis?.strengths && applicant.analysis.strengths.length > 0 ? (
+                                  applicant.analysis.strengths.map((strength: string, index: number) => (
+                                    <li key={index} className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-green-500 mr-2">•</span>
+                                      {strength}
+                                    </li>
+                                  ))
+                                ) : (
+                                  <>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-green-500 mr-2">•</span>
+                                      High matching score for this position
+                                    </li>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-green-500 mr-2">•</span>
+                                      Relevant experience and skills
+                                    </li>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-green-500 mr-2">•</span>
+                                      Strong candidate profile
+                                    </li>
+                                  </>
+                                )}
+                              </ul>
+                            </div>
+                            <div className="bg-white rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                                <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                                Areas for Improvement
+                              </h4>
+                              <ul className="space-y-1">
+                                {applicant.analysis?.weaknesses && applicant.analysis.weaknesses.length > 0 ? (
+                                  applicant.analysis.weaknesses.map((weakness: string, index: number) => (
+                                    <li key={index} className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-orange-500 mr-2">•</span>
+                                      {weakness}
+                                    </li>
+                                  ))
+                                ) : (
+                                  <>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-orange-500 mr-2">•</span>
+                                      Schedule interview to assess fit
+                                    </li>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-orange-500 mr-2">•</span>
+                                      Review resume for additional details
+                                    </li>
+                                    <li className="text-sm text-gray-700 flex items-start">
+                                      <span className="text-orange-500 mr-2">•</span>
+                                      Consider technical assessment
+                                    </li>
+                                  </>
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            {applicant.resumeS3Uri ? (
+                              <button
+                                onClick={() => handleViewResume(applicant.applicantId)}
+                                className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                              >
+                                <FileText className="w-4 h-4 mr-1" />
+                                View Resume
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 text-sm">No resume available</span>
+                            )}
+                            <div className="flex items-center space-x-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                                {statusInfo.icon}
+                                <span className="ml-1">{statusInfo.label}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {hasMoreApplicants && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      onClick={loadMore}
+                      className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-colors flex items-center"
+                    >
+                      <Loader2 className="w-4 h-4 mr-2" />
+                      Load More Applicants
+                    </button>
+                  </div>
+                )}
+
+                {/* Pagination Info */}
+                {shortlistedApplicants.length > 0 && (
+                  <div className="mt-4 text-center text-sm text-gray-500">
+                    Showing {Math.min(currentPage * itemsPerPage, shortlistedApplicants.length)} of {shortlistedApplicants.length} applicants
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -412,23 +684,54 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
   );
 };
 
-// All Candidates Modal Component
-const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  // For now, we'll use dummy data for candidates since we haven't implemented the candidates API yet
-  const allCandidates = [
-    { id: 1, name: "Sarah Johnson", email: "sarah.johnson@email.com", location: "San Francisco, CA", shortlistAIRank: 1, resumeUrl: "https://example.com/resume1.pdf", status: "Shortlisted" },
-    { id: 2, name: "Michael Chen", email: "michael.chen@email.com", location: "Seattle, WA", shortlistAIRank: 2, resumeUrl: "https://example.com/resume2.pdf", status: "Shortlisted" },
-    { id: 3, name: "Emily Rodriguez", email: "emily.rodriguez@email.com", location: "Austin, TX", shortlistAIRank: 3, resumeUrl: "https://example.com/resume3.pdf", status: "Shortlisted" },
-    { id: 4, name: "David Kim", email: "david.kim@email.com", location: "New York, NY", shortlistAIRank: 4, resumeUrl: "https://example.com/resume4.pdf", status: "Applied" },
-    { id: 5, name: "Lisa Wang", email: "lisa.wang@email.com", location: "Los Angeles, CA", shortlistAIRank: 5, resumeUrl: "https://example.com/resume5.pdf", status: "Applied" },
-    { id: 6, name: "James Wilson", email: "james.wilson@email.com", location: "Chicago, IL", shortlistAIRank: 6, resumeUrl: "https://example.com/resume6.pdf", status: "Applied" },
-    { id: 7, name: "Maria Garcia", email: "maria.garcia@email.com", location: "Miami, FL", shortlistAIRank: 7, resumeUrl: "https://example.com/resume7.pdf", status: "Applied" },
-    { id: 8, name: "Alex Thompson", email: "alex.thompson@email.com", location: "Denver, CO", shortlistAIRank: 8, resumeUrl: "https://example.com/resume8.pdf", status: "Applied" },
-    { id: 9, name: "Rachel Green", email: "rachel.green@email.com", location: "Portland, OR", shortlistAIRank: 9, resumeUrl: "https://example.com/resume9.pdf", status: "Applied" },
-    { id: 10, name: "Tom Anderson", email: "tom.anderson@email.com", location: "Boston, MA", shortlistAIRank: 10, resumeUrl: "https://example.com/resume10.pdf", status: "Applied" },
-    { id: 11, name: "Sophie Brown", email: "sophie.brown@email.com", location: "Phoenix, AZ", shortlistAIRank: 11, resumeUrl: "https://example.com/resume11.pdf", status: "Applied" },
-    { id: 12, name: "Kevin Lee", email: "kevin.lee@email.com", location: "San Diego, CA", shortlistAIRank: 12, resumeUrl: "https://example.com/resume12.pdf", status: "Applied" }
-  ];
+// All Applicants Modal Component
+const AllApplicantsModal = ({ isOpen, onClose, jobId }: { isOpen: boolean; onClose: () => void; jobId: string }) => {
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Function to handle resume viewing
+  const handleViewResume = async (applicantId: string) => {
+    try {
+      const { downloadUrl } = await getResumeDownloadUrl(applicantId);
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to get resume download URL:', error);
+      alert('Failed to open resume. Please try again.');
+    }
+  };
+
+  // Function to handle status updates
+  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
+    setApplicants(prev => prev.map(applicant => 
+      applicant.applicantId === applicantId 
+        ? { ...applicant, applicationStatus: newStatus }
+        : applicant
+    ));
+  };
+
+  // Fetch applicants for this specific job
+  useEffect(() => {
+    if (isOpen && jobId) {
+      const fetchApplicantsForJob = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const allApplicants = await getApplicants();
+          // Filter applicants for this specific job
+          const jobApplicants = allApplicants.filter((applicant: Applicant) => applicant.jobId === jobId);
+          setApplicants(jobApplicants);
+        } catch (err) {
+          console.error('Failed to fetch applicants:', err);
+          setError('Failed to load applicants. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchApplicantsForJob();
+    }
+  }, [isOpen, jobId]);
 
   if (!isOpen) return null;
 
@@ -441,7 +744,7 @@ const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <Users className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">All Candidates</h2>
+            <h2 className="text-xl font-semibold text-gray-900">All Applicants</h2>
           </div>
           <button
             onClick={onClose}
@@ -454,64 +757,105 @@ const AllCandidatesModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         {/* Modal Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
           <div className="p-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                  <span className="text-gray-600">Loading applicants...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-red-800">{error}</p>
+              </div>
+            ) : (
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                {applicants.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    No applicants found for this job.
+                  </div>
+                ) : (
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Rank</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Candidate</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Score</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Resume</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {allCandidates.map((candidate) => (
-                    <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
+                      {applicants.map((applicant) => (
+                        <tr key={applicant.applicantId} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                            {candidate.shortlistAIRank}
-                          </div>
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-white text-sm font-medium">
+                                  {applicant.firstName[0]}{applicant.lastName[0]}
+                                </span>
+                              </div>
+                              <span className="font-medium text-gray-900">
+                                {applicant.firstName} {applicant.lastName}
+                              </span>
+                            </div>
+                      </td>
+                          <td className="px-6 py-4 text-gray-700">{applicant.email}</td>
+                      <td className="px-6 py-4">
+                            <div className="flex items-center text-gray-700">
+                              <MapPin className="w-4 h-4 mr-1" />
+                              {applicant.location}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-gray-900">{candidate.name}</p>
-                          <p className="text-sm text-gray-500">{candidate.email}</p>
-                        </div>
+                            {applicant.matchingScore ? (
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                                  {applicant.matchingScore}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              applicant.applicationStatus === 'SHORTLISTED' 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : applicant.applicationStatus === 'REJECTED'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {applicant.applicationStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {applicant.resumeS3Uri ? (
+                              <button
+                                onClick={() => handleViewResume(applicant.applicantId)}
+                                className="inline-flex items-center px-2 py-1 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors text-xs"
+                              >
+                                <FileText className="w-3 h-3 mr-1" />
+                                Resume
+                              </button>
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-gray-700">{candidate.location}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          candidate.status === 'Shortlisted' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {candidate.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                        <a
-                          href={candidate.resumeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                            className="inline-flex items-center px-2 py-1 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors text-xs"
-                        >
-                            <FileText className="w-3 h-3 mr-1" />
-                            Resume
-                        </a>
-                        <ActionDropdown candidateId={candidate.id} candidateName={candidate.name} />
-                        </div>
+                            <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                              handleStatusUpdate(applicant.applicantId, newStatus);
+                            }} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+                )}
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -815,12 +1159,16 @@ export default function JobDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isShortlistedModalOpen, setIsShortlistedModalOpen] = useState(false);
-  const [isAllCandidatesModalOpen, setIsAllCandidatesModalOpen] = useState(false);
+  const [isAllApplicantsModalOpen, setIsAllApplicantsModalOpen] = useState(false);
   const [jobStatusMenuOpen, setJobStatusMenuOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isStatusConfirmModalOpen, setIsStatusConfirmModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  const [applicantStats, setApplicantStats] = useState({
+    totalApplicants: 0,
+    shortlistedApplicants: 0
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -851,11 +1199,30 @@ export default function JobDetail() {
       console.log('Fetching job with ID:', jobId);
       const jobData = await getJobById(jobId);
       setJob(jobData);
+      
+      // Fetch applicant statistics
+      await fetchApplicantStats();
     } catch (err) {
       console.error('Failed to fetch job:', err);
       setError('Failed to load job details. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApplicantStats = async () => {
+    try {
+      const allApplicants = await getApplicants();
+      const jobApplicants = allApplicants.filter((applicant: Applicant) => applicant.jobId === jobId);
+      const shortlistedApplicants = jobApplicants.filter((applicant: Applicant) => applicant.applicationStatus === 'SHORTLISTED');
+      
+      setApplicantStats({
+        totalApplicants: jobApplicants.length,
+        shortlistedApplicants: shortlistedApplicants.length
+      });
+    } catch (err) {
+      console.error('Failed to fetch applicant stats:', err);
+      // Don't set error here as it's not critical for the main job display
     }
   };
 
@@ -891,7 +1258,7 @@ export default function JobDetail() {
       console.log('Attempting to delete job:', jobId);
       await deleteJob(jobId);
       console.log('Job deleted successfully');
-      setIsDeleteModalOpen(false);
+    setIsDeleteModalOpen(false);
       router.push('/dashboard/jobs');
     } catch (err) {
       console.error('Failed to delete job:', err);
@@ -1099,11 +1466,11 @@ export default function JobDetail() {
               
               <div className="space-y-3">
                 <button 
-                  onClick={() => setIsAllCandidatesModalOpen(true)}
+                  onClick={() => setIsAllApplicantsModalOpen(true)}
                   className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  View All Candidates
+                  View All Applicants
                 </button>
                 
                 <button 
@@ -1111,7 +1478,7 @@ export default function JobDetail() {
                   className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-colors flex items-center justify-center"
                 >
                   <Brain className="w-4 h-4 mr-2" />
-                  View Shortlisted AI Candidates
+                  View Shortlisted AI Applicants
                 </button>
               </div>
             </div>
@@ -1178,13 +1545,13 @@ export default function JobDetail() {
                 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Applications</span>
-                  <span className="font-medium text-gray-900">{job.applications_count || 0}</span>
+                  <span className="font-medium text-gray-900">{applicantStats.totalApplicants}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">AI Shortlisted</span>
-                  <span className="font-medium text-purple-600">{job.shortlisted_ai_count || 0}</span>
-            </div>
+                  <span className="text-sm text-gray-500">Shortlisted Applicants</span>
+                  <span className="font-medium text-purple-600">{applicantStats.shortlistedApplicants}</span>
+                </div>
 
                 {job.is_urgent && (
                   <div className="flex items-center justify-between">
@@ -1204,11 +1571,13 @@ export default function JobDetail() {
       <ShortlistedCandidatesModal 
         isOpen={isShortlistedModalOpen} 
         onClose={() => setIsShortlistedModalOpen(false)} 
+        jobId={jobId} 
       />
 
-      <AllCandidatesModal 
-        isOpen={isAllCandidatesModalOpen} 
-        onClose={() => setIsAllCandidatesModalOpen(false)} 
+      <AllApplicantsModal 
+        isOpen={isAllApplicantsModalOpen} 
+        onClose={() => setIsAllApplicantsModalOpen(false)} 
+        jobId={jobId} 
       />
 
       <DeleteConfirmationModal 

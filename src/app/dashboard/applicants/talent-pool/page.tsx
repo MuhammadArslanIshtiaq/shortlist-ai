@@ -18,7 +18,7 @@ import {
   Database
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getApplicants, Applicant, getResumeDownloadUrl } from '@/lib/api';
+import { getApplicants, Applicant, getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
 import { getJobById } from '@/lib/api';
 
 // Filter Modal Component
@@ -197,8 +197,78 @@ const CircularProgress = ({ score }: { score: number }) => {
   );
 };
 
+// Popup Message Component
+const PopupMessage = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  message, 
+  type 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  title: string; 
+  message: string; 
+  type: 'success' | 'info' | 'warning' 
+}) => {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success':
+        return <Check className="w-5 h-5 text-green-600" />;
+      case 'warning':
+        return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      default:
+        return <AlertCircle className="w-5 h-5 text-blue-600" />;
+    }
+  };
+
+  const getBgColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-50 border-green-200';
+      case 'warning':
+        return 'bg-orange-50 border-orange-200';
+      default:
+        return 'bg-blue-50 border-blue-200';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className={`bg-white rounded-lg shadow-xl max-w-md w-full border ${getBgColor()}`}>
+        <div className="p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              type === 'success' ? 'bg-green-100' : type === 'warning' ? 'bg-orange-100' : 'bg-blue-100'
+            }`}>
+              {getIcon()}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          </div>
+          <p className="text-gray-600 mb-6">{message}</p>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; currentStatus: string }) => {
+const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+  applicantId: string; 
+  jobId: string;
+  currentStatus: string;
+  onStatusUpdate?: (newStatus: string) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [popupConfig, setPopupConfig] = useState({
     isOpen: false,
@@ -207,43 +277,64 @@ const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; c
     type: 'info' as 'success' | 'info' | 'warning'
   });
 
-  const handleAction = (action: string) => {
+  const handleAction = async (action: string) => {
     console.log(`${action} for applicant ${applicantId}`);
     setIsOpen(false);
     
-    // Show appropriate popup message
-    switch (action) {
-      case 'shortlist':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Applicant Shortlisted',
-          message: 'The applicant has been shortlisted for interview.',
-          type: 'success'
-        });
-        break;
-      case 'schedule':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Interview Scheduled',
-          message: 'The interview has been scheduled successfully.',
-          type: 'success'
-        });
-        break;
-      case 'remove':
-        setPopupConfig({
-          isOpen: true,
-          title: 'Removed from Talent Pool',
-          message: 'The applicant has been removed from the talent pool.',
-          type: 'warning'
-        });
-        break;
-      default:
-        setPopupConfig({
-          isOpen: true,
-          title: 'Action Completed',
-          message: 'The action has been completed successfully.',
-          type: 'info'
-        });
+    try {
+      let newStatus = '';
+      let popupTitle = '';
+      let popupMessage = '';
+      let popupType: 'success' | 'info' | 'warning' = 'info';
+      
+      // Determine new status and popup configuration
+      switch (action) {
+        case 'shortlist':
+          newStatus = 'SHORTLISTED';
+          popupTitle = 'Applicant Shortlisted';
+          popupMessage = 'The applicant has been shortlisted for interview.';
+          popupType = 'success';
+          break;
+        case 'talentpool':
+          newStatus = 'TALENT_POOL';
+          popupTitle = 'Added to Talent Pool';
+          popupMessage = 'The applicant has been added to the talent pool.';
+          popupType = 'success';
+          break;
+        case 'reject':
+          newStatus = 'REJECTED';
+          popupTitle = 'Applicant Rejected';
+          popupMessage = 'The applicant has been marked as not moving forward.';
+          popupType = 'warning';
+          break;
+        default:
+          return;
+      }
+      
+      // Update status in database
+      await updateApplicantStatus(applicantId, jobId, newStatus);
+      
+      // Show success popup
+      setPopupConfig({
+        isOpen: true,
+        title: popupTitle,
+        message: popupMessage,
+        type: popupType
+      });
+      
+      // Call the callback to update the UI
+      if (onStatusUpdate) {
+        onStatusUpdate(newStatus);
+      }
+      
+    } catch (error) {
+      console.error('Failed to update applicant status:', error);
+      setPopupConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update applicant status. Please try again.',
+        type: 'warning'
+      });
     }
   };
 
@@ -285,55 +376,34 @@ const ActionDropdown = ({ applicantId, currentStatus }: { applicantId: string; c
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <UserCheck className="w-4 h-4 mr-2 text-green-600" />
-                Shortlist for Interview
+                Shortlist for interview
               </button>
               <button
-                onClick={() => handleAction('schedule')}
+                onClick={() => handleAction('talentpool')}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
-                Schedule Interview
+                <UserPlus className="w-4 h-4 mr-2 text-blue-600" />
+                Add to Talent Pool
               </button>
               <button
-                onClick={() => handleAction('remove')}
+                onClick={() => handleAction('reject')}
                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <UserX className="w-4 h-4 mr-2 text-red-600" />
-                Remove from Pool
+                Not Moving Forward
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Popup Message */}
-      {popupConfig.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                {popupConfig.type === 'success' ? (
-                  <Check className="w-5 h-5 text-green-600" />
-                ) : popupConfig.type === 'warning' ? (
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-blue-600" />
-                )}
-                <h3 className="text-lg font-semibold text-gray-900">{popupConfig.title}</h3>
-              </div>
-              <p className="text-gray-700">{popupConfig.message}</p>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={closePopup}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PopupMessage
+        isOpen={popupConfig.isOpen}
+        onClose={closePopup}
+        title={popupConfig.title}
+        message={popupConfig.message}
+        type={popupConfig.type}
+      />
     </>
   );
 };
@@ -372,7 +442,7 @@ export default function TalentPool() {
       const data = await getApplicants();
       // Filter for talent pool applicants
       const talentPoolApplicants = data.filter((applicant: Applicant) => 
-        applicant.applicationStatus.toLowerCase() === 'talentpool'
+        applicant.applicationStatus === 'TALENT_POOL'
       );
       
       // Fetch job titles for talent pool applicants
@@ -419,6 +489,14 @@ export default function TalentPool() {
 
     return matchesSearch && matchesJob && matchesLocation && matchesScore;
   });
+
+  // Function to handle status updates
+  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
+    // If the status is no longer TALENT_POOL, remove the applicant from the list
+    if (newStatus !== 'TALENT_POOL') {
+      setApplicants(prev => prev.filter(applicant => applicant.applicantId !== applicantId));
+    }
+  };
 
   // Function to handle resume viewing
   const handleViewResume = async (applicantId: string) => {
@@ -561,7 +639,9 @@ export default function TalentPool() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <ActionDropdown applicantId={applicant.applicantId} currentStatus={applicant.applicationStatus} />
+                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                          handleStatusUpdate(applicant.applicantId, newStatus);
+                        }} />
                       </td>
                     </tr>
                   ))

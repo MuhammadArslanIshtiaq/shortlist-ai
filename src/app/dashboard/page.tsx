@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   Briefcase, 
   Users, 
@@ -9,67 +10,147 @@ import {
   Calendar,
   MapPin,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+import Link from 'next/link';
+import { getJobs, getApplicants, Job, Applicant } from '@/lib/api';
 
-// Dummy data
-const dashboardStats = {
-  totalJobs: 24,
-  totalApplications: 156,
-  shortlistedCandidates: 23,
-  rejectedApplications: 89
-};
-
-const recentJobs = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    salary: "$120k - $150k",
-    postedDate: "2024-01-15",
-    applications: 12,
-    status: "Active"
-  },
-  {
-    id: 2,
-    title: "Product Manager",
-    company: "InnovateLabs",
-    location: "New York, NY",
-    salary: "$130k - $160k",
-    postedDate: "2024-01-14",
-    applications: 8,
-    status: "Active"
-  },
-  {
-    id: 3,
-    title: "Data Scientist",
-    company: "AI Solutions",
-    location: "Austin, TX",
-    salary: "$110k - $140k",
-    postedDate: "2024-01-13",
-    applications: 15,
-    status: "Active"
-  },
-  {
-    id: 4,
-    title: "UX Designer",
-    company: "Design Studio",
-    location: "Seattle, WA",
-    salary: "$100k - $130k",
-    postedDate: "2024-01-12",
-    applications: 6,
-    status: "Active"
-  }
-];
+// Dashboard statistics interface
+interface DashboardStats {
+  totalJobs: number;
+  totalApplications: number;
+  shortlistedCandidates: number;
+  rejectedApplications: number;
+}
 
 export default function Dashboard() {
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalJobs: 0,
+    totalApplications: 0,
+    shortlistedCandidates: 0,
+    rejectedApplications: 0
+  });
+  const [recentJobs, setRecentJobs] = useState<Job[]>([]);
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch jobs and applicants in parallel
+        const [jobs, applicantsData] = await Promise.all([
+          getJobs(),
+          getApplicants()
+        ]);
+
+        // Calculate statistics
+        const totalJobs = jobs.length;
+        const totalApplications = applicantsData.length;
+        const shortlistedCandidates = applicantsData.filter((applicant: Applicant) => 
+          applicant.applicationStatus === 'SHORTLISTED'
+        ).length;
+        const rejectedApplications = applicantsData.filter((applicant: Applicant) => 
+          applicant.applicationStatus === 'REJECTED'
+        ).length;
+
+        setDashboardStats({
+          totalJobs,
+          totalApplications,
+          shortlistedCandidates,
+          rejectedApplications
+        });
+
+        // Store applicants data for application count calculations
+        setApplicants(applicantsData);
+
+        // Get recent jobs (sorted by creation date, most recent first)
+        const sortedJobs = jobs
+          .sort((a: Job, b: Job) => b.createdAt - a.createdAt)
+          .slice(0, 5); // Show only the 5 most recent jobs
+
+        setRecentJobs(sortedJobs);
+
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  // Format salary range
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min && !job.salary_max) {
+      return 'Not specified';
+    }
+    
+    const currency = job.salary_currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency;
+    
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
+    }
+  };
+
+  // Get application count for a specific job
+  const getApplicationCount = (jobId: string) => {
+    const jobApplicants = applicants.filter(applicant => applicant.jobId === jobId);
+    return jobApplicants.length;
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-800 font-medium">Error Loading Dashboard</p>
+            </div>
+            <p className="text-red-700">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -159,62 +240,85 @@ export default function Dashboard() {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Jobs</h2>
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Position</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Company</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Salary</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Posted</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applications</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {recentJobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <Building2 className="w-5 h-5 text-gray-400 mr-3" />
-                          <span className="font-medium text-gray-900">{job.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-gray-700">{job.company}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {job.location}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          {job.salary}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(job.postedDate).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {job.applications} apps
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {job.status}
-                        </span>
-                      </td>
+            {recentJobs.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">No jobs found</p>
+                <p className="text-sm">Create your first job posting to get started.</p>
+                <Link
+                  href="/dashboard/create-job"
+                  className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Job
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Position</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Company</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Salary</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Posted</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applications</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {recentJobs.map((job) => (
+                      <tr key={job.jobId} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <Link 
+                            href={`/dashboard/jobs/${job.jobId}`}
+                            className="flex items-center group"
+                          >
+                            <Building2 className="w-5 h-5 text-gray-400 mr-3 group-hover:text-blue-600 transition-colors" />
+                            <span className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer">
+                              {job.title}
+                            </span>
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 text-gray-700">{job.company}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center text-gray-700">
+                            <MapPin className="w-4 h-4 mr-1" />
+                            {job.location}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center text-gray-700">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            {formatSalary(job)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center text-gray-700">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            {new Date(job.createdAt * 1000).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {getApplicationCount(job.jobId)} apps
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            job.status === 'OPEN' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {job.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
