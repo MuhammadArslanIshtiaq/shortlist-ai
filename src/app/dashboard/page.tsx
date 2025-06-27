@@ -167,7 +167,7 @@ export default function Dashboard() {
             <div className="flex-1">
               <h1 className="text-4xl font-bold mb-2">Welcome back, Admin! 👋</h1>
               <p className="text-blue-100 text-lg">
-                Your AI-powered shortlisting system is running smoothly. Here's what's happening today.
+                Your AI-powered shortlisting system is running smoothly. Here&apos;s what&apos;s happening today.
               </p>
             </div>
             
@@ -253,23 +253,23 @@ export default function Dashboard() {
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Position</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Company</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Salary</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Posted</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applications</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentJobs.map((job) => (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Position</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Company</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Salary</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Posted</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Applications</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {recentJobs.map((job) => (
                       <tr key={job.jobId} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
+                      <td className="px-6 py-4">
                           <Link 
                             href={`/dashboard/jobs/${job.jobId}`}
                             className="flex items-center group"
@@ -279,45 +279,45 @@ export default function Dashboard() {
                               {job.title}
                             </span>
                           </Link>
-                        </td>
-                        <td className="px-6 py-4 text-gray-700">{job.company}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-gray-700">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            {job.location}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-gray-700">
-                            <DollarSign className="w-4 h-4 mr-1" />
+                      </td>
+                      <td className="px-6 py-4 text-gray-700">{job.company}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {job.location}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <DollarSign className="w-4 h-4 mr-1" />
                             {formatSalary(job)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-gray-700">
-                            <Calendar className="w-4 h-4 mr-1" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center text-gray-700">
+                          <Calendar className="w-4 h-4 mr-1" />
                             {new Date(job.createdAt * 1000).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {getApplicationCount(job.jobId)} apps
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             job.status === 'OPEN' 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {job.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          {job.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             )}
           </div>
         </div>

@@ -103,7 +103,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-lg font-semibold text-blue-900">Settings Coming Soon</h3>
               <p className="text-blue-700">
-                We're working on implementing comprehensive settings functionality. 
+                We&apos;re working on implementing comprehensive settings functionality. 
                 This page will be fully functional in the next update.
               </p>
             </div>

@@ -13,13 +13,6 @@ import {
   ArrowLeft,
   Edit,
   Trash2,
-  Mail,
-  Phone,
-  Globe,
-  Star,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
   FileText,
   X,
   MoreHorizontal,
@@ -181,10 +174,9 @@ const PopupMessage = ({
 };
 
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: { 
   applicantId: string; 
   jobId: string;
-  currentStatus: string;
   onStatusUpdate?: (newStatus: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -261,7 +253,7 @@ const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (isOpen) {
         setIsOpen(false);
       }
@@ -377,7 +369,6 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose, jobId }: { isOpen: boolea
           });
           
           setShortlistedApplicants(sortedApplicants);
-          setHasMore(sortedApplicants.length > itemsPerPage);
         } catch (err) {
           console.error('Failed to fetch applicants:', err);
           setError('Failed to load applicants. Please try again.');
@@ -514,7 +505,6 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose, jobId }: { isOpen: boolea
                               <ActionDropdown 
                                 applicantId={applicant.applicantId} 
                                 jobId={applicant.jobId} 
-                                currentStatus={applicant.applicationStatus} 
                                 onStatusUpdate={(newStatus) => {
                                   handleStatusUpdate(applicant.applicantId, newStatus);
                                 }} 
@@ -845,7 +835,7 @@ const AllApplicantsModal = ({ isOpen, onClose, jobId }: { isOpen: boolean; onClo
                             )}
                       </td>
                       <td className="px-6 py-4">
-                            <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                            <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} onStatusUpdate={(newStatus) => {
                               handleStatusUpdate(applicant.applicantId, newStatus);
                             }} />
                       </td>
@@ -923,7 +913,6 @@ const StatusConfirmationModal = ({
   if (!isOpen) return null;
 
   const isClosing = newStatus === 'CLOSED';
-  const isOpening = newStatus === 'OPEN';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

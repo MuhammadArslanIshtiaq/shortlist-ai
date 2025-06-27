@@ -20,7 +20,7 @@ export default function DashboardLayout({
       try {
         await getCurrentUser();
         setIsAuthenticated(true);
-      } catch (error) {
+      } catch {
         router.push('/login');
       }
     };

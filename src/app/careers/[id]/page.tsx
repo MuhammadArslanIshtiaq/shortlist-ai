@@ -7,14 +7,8 @@ import {
   MapPin, 
   DollarSign, 
   Calendar, 
-  Clock,
   ArrowLeft,
-  ExternalLink,
   FileText,
-  Mail,
-  Phone,
-  Globe,
-  Star,
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -162,7 +156,7 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
     try {
       // Submit the application using the real API
       setUploadProgress('Getting upload URL...');
-      const result = await submitApplication({
+      await submitApplication({
         jobId: job.jobId,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -210,7 +204,7 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
           <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Application Submitted!</h3>
           <p className="text-gray-600 mb-4">
-            Thank you for your application. We'll review your submission and get back to you soon.
+            Thank you for your application. We&apos;ll review your submission and get back to you soon.
           </p>
           <button
             onClick={onClose}
@@ -629,13 +623,12 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">About {job.company}</h3>
               <p className="text-gray-600 mb-4">
-                We're a forward-thinking company focused on innovation and growth. Join our team and be part of something amazing.
+                We&apos;re a forward-thinking company focused on innovation and growth. Join our team and be part of something amazing.
               </p>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <Globe className="w-4 h-4" />
                 <span>Company website</span>
-                  </div>
-                </div>
+              </div>
+            </div>
 
             {/* Job Details */}
             <div className="bg-white rounded-2xl shadow-lg p-6">

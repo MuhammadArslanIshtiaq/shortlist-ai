@@ -7,10 +7,8 @@ import {
   MapPin,
   DollarSign,
   Users,
-  Brain,
   Eye,
   Search,
-  Filter,
   Plus,
   Loader2
 } from 'lucide-react';
@@ -47,7 +45,6 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -296,7 +293,7 @@ export default function Jobs() {
                           }`}>
                             {job.work_arrangement}
                           </span>
-                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center text-gray-700">

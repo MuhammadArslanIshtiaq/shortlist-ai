@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, confirmSignIn } from 'aws-amplify/auth';
 import { Eye, EyeOff, Lock, Mail, Sparkles, AlertCircle, Building2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -348,12 +349,12 @@ export default function LoginPage() {
               <Building2 className="w-4 h-4 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">Looking for a job?</span>
             </div>
-            <a 
+            <Link 
               href="/careers" 
               className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
             >
               View our open positions →
-            </a>
+            </Link>
           </div>
         </div>
 

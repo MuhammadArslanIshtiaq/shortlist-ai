@@ -4,10 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Briefcase, 
-  Building2, 
-  MapPin, 
   DollarSign, 
-  Calendar,
   FileText,
   Users,
   Clock,

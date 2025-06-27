@@ -11,11 +11,9 @@ import {
   FileText,
   MapPin,
   Check,
-  X,
   X as CloseIcon,
   Loader2,
-  AlertCircle,
-  Database
+  AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getApplicants, Applicant, getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
@@ -39,7 +37,12 @@ const FilterModal = ({
     minScore: string;
     maxScore: string;
   };
-  onFiltersChange: (filters: any) => void;
+  onFiltersChange: (filters: {
+    job: string;
+    location: string;
+    minScore: string;
+    maxScore: string;
+  }) => void;
   onApplyFilters: () => void;
   uniqueJobs: string[];
   uniqueLocations: string[];
@@ -263,10 +266,9 @@ const PopupMessage = ({
 };
 
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: { 
   applicantId: string; 
   jobId: string;
-  currentStatus: string;
   onStatusUpdate?: (newStatus: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -343,7 +345,7 @@ const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (isOpen) {
         setIsOpen(false);
       }
@@ -639,7 +641,7 @@ export default function TalentPool() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} onStatusUpdate={(newStatus) => {
                           handleStatusUpdate(applicant.applicantId, newStatus);
                         }} />
                       </td>

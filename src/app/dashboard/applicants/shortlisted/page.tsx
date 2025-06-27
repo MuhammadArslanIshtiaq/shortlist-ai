@@ -1,7 +1,6 @@
 'use client';
 
 import { 
-  Users, 
   Search,
   Filter,
   MoreHorizontal,
@@ -11,7 +10,6 @@ import {
   FileText,
   MapPin,
   Check,
-  X,
   X as CloseIcon,
   Loader2,
   AlertCircle,
@@ -39,7 +37,12 @@ const FilterModal = ({
     minScore: string;
     maxScore: string;
   };
-  onFiltersChange: (filters: any) => void;
+  onFiltersChange: (filters: {
+    job: string;
+    location: string;
+    minScore: string;
+    maxScore: string;
+  }) => void;
   onApplyFilters: () => void;
   uniqueJobs: string[];
   uniqueLocations: string[];
@@ -166,42 +169,41 @@ const CircularProgress = ({ score }: { score: number }) => {
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg className="transform -rotate-90" width="50" height="50">
-        <circle
+          <circle
           cx="25"
           cy="25"
-          r={radius}
-          stroke="currentColor"
-          strokeWidth="3"
-          fill="transparent"
-          className="text-gray-200"
-        />
-        <circle
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="3"
+            fill="transparent"
+            className="text-gray-200"
+          />
+          <circle
           cx="25"
           cy="25"
-          r={radius}
-          stroke="currentColor"
-          strokeWidth="3"
-          fill="transparent"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="3"
+            fill="transparent"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className={getStrokeColor(score)}
-          strokeLinecap="round"
-        />
-      </svg>
+            strokeLinecap="round"
+          />
+        </svg>
       <div className="absolute">
         <span className={`text-xs font-semibold ${getScoreColor(score)}`}>
-          {score}
-        </span>
+            {score}
+          </span>
       </div>
     </div>
   );
 };
 
 // Action Dropdown Component
-const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: { 
+const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: { 
   applicantId: string; 
   jobId: string;
-  currentStatus: string;
   onStatusUpdate?: (newStatus: string) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -282,7 +284,7 @@ const ActionDropdown = ({ applicantId, jobId, currentStatus, onStatusUpdate }: {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (_event: MouseEvent) => {
       if (isOpen) {
         setIsOpen(false);
       }
@@ -560,52 +562,52 @@ export default function ShortlistedApplicants() {
                 ) : (
                   filteredApplicants.map((applicant) => (
                     <tr key={applicant.applicantId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
                           <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mr-3">
-                            <span className="text-white text-sm font-medium">
+                          <span className="text-white text-sm font-medium">
                               {applicant.firstName[0]}{applicant.lastName[0]}
                             </span>
                           </div>
                           <span className="font-medium text-gray-900">
                             {applicant.firstName} {applicant.lastName}
                           </span>
-                        </div>
-                      </td>
+                      </div>
+                    </td>
                       <td className="px-6 py-4 text-gray-700">{applicant.email}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center text-gray-700">
-                          <MapPin className="w-4 h-4 mr-1" />
+                    <td className="px-6 py-4">
+                      <div className="flex items-center text-gray-700">
+                        <MapPin className="w-4 h-4 mr-1" />
                           {applicant.location}
-                        </div>
-                      </td>
+                      </div>
+                    </td>
                       <td className="px-6 py-4 text-gray-700">{applicant.jobTitle || 'N/A'}</td>
-                      <td className="px-6 py-4">
+                    <td className="px-6 py-4">
                         {applicant.matchingScore ? (
                           <CircularProgress score={applicant.matchingScore} />
                         ) : (
                           <span className="text-gray-400">N/A</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
+                    </td>
+                    <td className="px-6 py-4">
                         {applicant.resumeS3Uri ? (
                           <button
                             onClick={() => applicant.resumeS3Uri && handleViewResume(applicant.applicantId)}
-                            className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            View Resume
+                        className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        View Resume
                           </button>
                         ) : (
                           <span className="text-gray-400">N/A</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} currentStatus={applicant.applicationStatus} onStatusUpdate={(newStatus) => {
+                    </td>
+                    <td className="px-6 py-4">
+                        <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} onStatusUpdate={(newStatus) => {
                           handleStatusUpdate(applicant.applicantId, newStatus);
                         }} />
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   ))
                 )}
               </tbody>

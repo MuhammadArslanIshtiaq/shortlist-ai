@@ -8,7 +8,6 @@ import {
   Calendar, 
   Building2,
   Search,
-  Filter,
   ExternalLink,
   Loader2
 } from 'lucide-react';
@@ -106,7 +105,6 @@ export default function CareersPage() {
   });
 
   const uniqueLocations = [...new Set(jobs.map(job => job.location))];
-  const uniqueTypes = [...new Set(jobs.map(job => job.employment_type))];
 
   return (
     <div className="min-h-screen bg-gray-50">

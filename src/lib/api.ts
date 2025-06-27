@@ -45,7 +45,7 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
   }
   
   return response.json();
-};
+}; 
 
 // Jobs API functions
 export const getJobs = async () => {
@@ -60,14 +60,46 @@ export const getJobById = async (id: string) => {
   return authenticatedFetch(`/jobs/${id}`);
 };
 
-export const createJob = async (jobData: any) => {
+export const createJob = async (jobData: {
+  title: string;
+  company: string;
+  location: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  employment_type: string;
+  experience_level: string;
+  work_arrangement: string;
+  description: string;
+  requirements?: string;
+  benefits?: string;
+  application_deadline?: string | null;
+  is_urgent: boolean;
+  status?: string;
+}) => {
   return authenticatedFetch('/jobs', {
     method: 'POST',
     body: JSON.stringify(jobData)
   });
 };
 
-export const updateJob = async (id: string, jobData: any) => {
+export const updateJob = async (id: string, jobData: {
+  title?: string;
+  company?: string;
+  location?: string;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string;
+  employment_type?: string;
+  experience_level?: string;
+  work_arrangement?: string;
+  description?: string;
+  requirements?: string;
+  benefits?: string;
+  application_deadline?: string | null;
+  is_urgent?: boolean;
+  status?: string;
+}) => {
   return authenticatedFetch(`/jobs/${id}`, {
     method: 'PUT',
     body: JSON.stringify(jobData)
@@ -90,7 +122,7 @@ export const deleteJob = async (id: string) => {
       try {
         const errorBody = await response.json();
         errorMessage = errorBody.error || errorBody.message || errorMessage;
-      } catch (parseError) {
+      } catch (_parseError) {
         // If response is empty or not JSON, use the status text
         console.log('Response is not JSON, using status text');
       }
@@ -102,7 +134,7 @@ export const deleteJob = async (id: string) => {
     if (contentType && contentType.includes('application/json')) {
       try {
         return await response.json();
-      } catch (parseError) {
+      } catch (_parseError) {
         console.log('Response is JSON but parsing failed, returning success');
         return { success: true };
       }
