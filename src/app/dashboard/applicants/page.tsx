@@ -401,7 +401,7 @@ const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: {
   };
 
   useEffect(() => {
-    const handleClickOutside = (_event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (isOpen) {
         setIsOpen(false);
       }

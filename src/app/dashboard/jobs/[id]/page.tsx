@@ -253,7 +253,7 @@ const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: {
   };
 
   useEffect(() => {
-    const handleClickOutside = (_event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (isOpen) {
         setIsOpen(false);
       }
@@ -324,7 +324,6 @@ const ShortlistedCandidatesModal = ({ isOpen, onClose, jobId }: { isOpen: boolea
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
   const itemsPerPage = 5;
 
   // Function to handle resume viewing
@@ -901,13 +900,11 @@ const StatusConfirmationModal = ({
   isOpen, 
   onClose, 
   onConfirm, 
-  currentStatus, 
   newStatus 
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onConfirm: () => void; 
-  currentStatus: string;
   newStatus: string;
 }) => {
   if (!isOpen) return null;
@@ -1579,7 +1576,6 @@ export default function JobDetail() {
         isOpen={isStatusConfirmModalOpen} 
         onClose={() => setIsStatusConfirmModalOpen(false)} 
         onConfirm={confirmStatusChange} 
-        currentStatus={job.status} 
         newStatus={pendingStatusChange || ''} 
       />
       

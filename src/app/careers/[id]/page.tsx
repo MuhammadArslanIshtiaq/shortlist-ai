@@ -399,48 +399,30 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
-      fetchJob();
-    } else {
-      setError('Invalid job ID');
-      setLoading(false);
-    }
-  }, [jobId]);
-
   const fetchJob = async () => {
     try {
       setLoading(true);
       setError(null);
-      
       console.log('Fetching job with ID:', jobId);
-      // Use the public job endpoint
       const jobData = await getPublicJobById(jobId);
-      console.log('Job data received:', jobData);
-      
-      // Check if job is open
-      if (jobData.status !== 'OPEN') {
-        setError('This job is no longer accepting applications.');
-        setLoading(false);
-        return;
-      }
-      
       setJob(jobData);
     } catch (err) {
       console.error('Failed to fetch job:', err);
-      
-      // Check if it's an authentication error
-      if (err instanceof Error && err.message.includes('401')) {
-        setError('Job endpoint requires authentication. Please configure the /jobs/{jobId} GET endpoint to be public in your AWS API Gateway.');
-      } else if (err instanceof Error && err.message.includes('403')) {
-        setError('Access denied. Please configure the /jobs/{jobId} GET endpoint to be public in your AWS API Gateway.');
-      } else {
-        setError(`Failed to load job details: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+      setError('Failed to load job details. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+      fetchJob();
+    } else {
+      console.error('Invalid jobId:', jobId);
+      setError(`Invalid job ID: ${jobId}`);
+      setLoading(false);
+    }
+  }, [jobId]);
 
   // Format salary range
   const formatSalary = (job: Job) => {

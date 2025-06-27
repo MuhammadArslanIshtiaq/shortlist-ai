@@ -122,7 +122,7 @@ export const deleteJob = async (id: string) => {
       try {
         const errorBody = await response.json();
         errorMessage = errorBody.error || errorBody.message || errorMessage;
-      } catch (_parseError) {
+      } catch {
         // If response is empty or not JSON, use the status text
         console.log('Response is not JSON, using status text');
       }
@@ -134,7 +134,7 @@ export const deleteJob = async (id: string) => {
     if (contentType && contentType.includes('application/json')) {
       try {
         return await response.json();
-      } catch (_parseError) {
+      } catch {
         console.log('Response is JSON but parsing failed, returning success');
         return { success: true };
       }
