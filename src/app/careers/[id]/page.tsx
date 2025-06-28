@@ -385,21 +385,41 @@ export default function JobDetailPage() {
   useEffect(() => {
     if (!jobId || jobId === 'undefined' || jobId === 'null') {
       console.error('Invalid jobId:', jobId);
+      setError('Invalid job ID');
+      setLoading(false);
       return;
     }
 
+    // If public jobs are still loading, wait for them
+    if (publicJobsLoading) {
+      return;
+    }
+
+    // First check if we have the job in our local state
+    const cachedJob = getJobById(jobId);
+    if (cachedJob) {
+      setJob(cachedJob);
+      setLoading(false);
+      return;
+    }
+
+    // If not in cache, fetch from API
     const fetchJob = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const jobData = await fetchJobById(jobId);
         setJob(jobData);
       } catch (err) {
         console.error('Failed to fetch job:', err);
         setError('Failed to load job details. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchJob();
-  }, [jobId]);
+  }, [jobId, publicJobsLoading, getJobById, fetchJobById]);
 
   // Format salary range
   const formatSalary = (job: Job) => {
