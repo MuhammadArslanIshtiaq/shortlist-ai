@@ -17,28 +17,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getPublicJobById, submitApplication } from '@/lib/api';
-
-// Type definition for Job
-interface Job {
-  jobId: string;
-  title: string;
-  company: string;
-  location: string;
-  salary_min: number | null;
-  salary_max: number | null;
-  salary_currency: string;
-  employment_type: string;
-  experience_level: string;
-  work_arrangement: string;
-  description: string;
-  requirements: string;
-  benefits: string;
-  application_deadline: string | null;
-  createdAt: number;
-  status: string;
-  is_urgent: boolean;
-}
+import { submitApplication } from '@/lib/api';
+import { usePublicData } from '@/contexts/PublicDataContext';
+import { Job } from '@/lib/api';
 
 // Application Form Modal Component
 const ApplicationModal = ({ isOpen, onClose, job }: { 
@@ -394,17 +375,54 @@ const ApplicationModal = ({ isOpen, onClose, job }: {
 export default function JobDetailPage() {
   const params = useParams();
   const jobId = params.id as string;
+  const { getJobById, fetchJobById, publicJobsLoading, publicJobs } = usePublicData();
+  
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+      // If public jobs are still loading, wait for them to finish
+      if (publicJobsLoading) {
+        return;
+      }
+
+      // First check if we have the job in cache immediately
+      const cachedJob = getJobById(jobId);
+      if (cachedJob) {
+        setJob(cachedJob);
+        setLoading(false);
+        return;
+      }
+
+      // If not in cache and public jobs are loaded but job not found, fetch individual job
+      if (publicJobs.length > 0) {
+        fetchJob();
+      } else {
+        // If no public jobs loaded yet, wait a bit more
+        const timer = setTimeout(() => {
+          fetchJob();
+        }, 1000);
+        
+        return () => clearTimeout(timer);
+      }
+    } else {
+      console.error('Invalid jobId:', jobId);
+      setError(`Invalid job ID: ${jobId}`);
+      setLoading(false);
+    }
+  }, [jobId, publicJobsLoading, publicJobs.length]);
 
   const fetchJob = async () => {
     try {
       setLoading(true);
       setError(null);
       console.log('Fetching job with ID:', jobId);
-      const jobData = await getPublicJobById(jobId);
+      
+      // Fetch from API (will be cached)
+      const jobData = await fetchJobById(jobId);
       setJob(jobData);
     } catch (err) {
       console.error('Failed to fetch job:', err);
@@ -413,16 +431,6 @@ export default function JobDetailPage() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
-      fetchJob();
-    } else {
-      console.error('Invalid jobId:', jobId);
-      setError(`Invalid job ID: ${jobId}`);
-      setLoading(false);
-    }
-  }, [jobId]);
 
   // Format salary range
   const formatSalary = (job: Job) => {
@@ -442,18 +450,81 @@ export default function JobDetailPage() {
     }
   };
 
-  if (loading) {
+  // Show loading if we're loading public jobs OR if we're loading the specific job
+  const showLoading = publicJobsLoading || (loading && !job);
+
+  if (showLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading job details...</span>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Skeleton */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-lg mr-3 animate-pulse"></div>
+                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Loading Message */}
+          <div className="text-center mb-8">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">
+              {publicJobsLoading ? 'Loading job listings...' : 'Loading job details...'}
+            </p>
+          </div>
+
+          {/* Job Header Skeleton */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="space-y-4">
+              <div className="h-8 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-6 w-1/2 bg-gray-200 rounded animate-pulse"></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-6 w-40 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-6 w-36 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="flex space-x-2">
+                <div className="h-8 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="h-8 w-24 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="h-8 w-28 bg-gray-200 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <div className="h-6 w-48 bg-gray-200 rounded mb-6 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-5/6 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-4/5 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="h-6 w-32 bg-gray-200 rounded mb-4 animate-pulse"></div>
+                <div className="space-y-3">
+                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error || !job) {
+  if (error || (!job && !showLoading)) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -472,6 +543,11 @@ export default function JobDetailPage() {
         </div>
       </div>
     );
+  }
+
+  // Ensure job is not null before rendering
+  if (!job) {
+    return null;
   }
 
   return (
@@ -558,9 +634,10 @@ export default function JobDetailPage() {
             <div className="lg:ml-8 mt-6 lg:mt-0">
               <button
                 onClick={() => setIsApplicationModalOpen(true)}
-                className="w-full lg:w-auto px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
+                disabled={!job}
+                className="w-full lg:w-auto px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Apply Now
+                {!job ? 'Loading...' : 'Apply Now'}
               </button>
             </div>
           </div>

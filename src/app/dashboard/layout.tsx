@@ -1,19 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from 'aws-amplify/auth';
-import Header from "@/components/Header";
-import Sidebar from "@/components/Sidebar";
+import { getCurrentUser, signOut } from 'aws-amplify/auth';
+import Header from '@/components/Header';
+import Sidebar from '@/components/Sidebar';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import NotificationHandler from '@/components/NotificationHandler';
+import NotificationPanel from '@/components/NotificationPanel';
 
 export default function DashboardLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  const router = useRouter();
+}) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,30 +32,42 @@ export default function DashboardLayout({
     setIsLoading(false);
   }, [router]);
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return null; // Will redirect to login
+    return null;
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <WebSocketProvider>
+      <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1">
+            {children}
+          </main>
+        </div>
+        <NotificationHandler />
       </div>
-    </div>
+    </WebSocketProvider>
   );
 } 

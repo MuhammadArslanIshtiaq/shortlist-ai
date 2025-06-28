@@ -11,70 +11,48 @@ import {
   ExternalLink,
   Loader2
 } from 'lucide-react';
-import { getPublicJobs } from '@/lib/api';
-
-// Type definition for Job
-interface Job {
-  jobId: string;
-  title: string;
-  company: string;
-  location: string;
-  salary_min: number | null;
-  salary_max: number | null;
-  salary_currency: string;
-  employment_type: string;
-  experience_level: string;
-  work_arrangement: string;
-  description: string;
-  requirements: string;
-  benefits: string;
-  application_deadline: string | null;
-  createdAt: number;
-  status: string;
-  is_urgent: boolean;
-}
+import { usePublicData } from '@/contexts/PublicDataContext';
+import { Job } from '@/lib/api';
 
 export default function CareersPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    getOpenJobs, 
+    publicJobsLoading, 
+    publicJobsError, 
+    refreshPublicJobs 
+  } = usePublicData();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Get open jobs from the shared context
+  const openJobs = getOpenJobs();
+
+  // Show loading on initial load or when API is loading
+  const showLoading = publicJobsLoading || (isInitialLoad && openJobs.length === 0);
+
+  // Set initial load to false once we have data
   useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Fetching public jobs...');
-      // Use the public jobs endpoint
-      const jobsData = await getPublicJobs();
-      console.log('Jobs data received:', jobsData);
-      
-      // Filter to only show OPEN jobs
-      const openJobs = jobsData.filter((job: Job) => job.status === 'OPEN');
-      console.log('Open jobs:', openJobs);
-      setJobs(openJobs);
-    } catch (err) {
-      console.error('Failed to fetch jobs:', err);
-      
-      // Check if it's an authentication error
-      if (err instanceof Error && err.message.includes('401')) {
-        setError('Jobs endpoint requires authentication. Please configure the /jobs GET endpoint to be public in your AWS API Gateway.');
-      } else if (err instanceof Error && err.message.includes('403')) {
-        setError('Access denied. Please configure the /jobs GET endpoint to be public in your AWS API Gateway.');
-      } else {
-        setError(`Failed to load jobs: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    } finally {
-      setLoading(false);
+    if (openJobs.length > 0 || publicJobsError) {
+      setIsInitialLoad(false);
     }
-  };
+  }, [openJobs.length, publicJobsError]);
+
+  // Filter jobs based on search and filters
+  const filteredJobs = openJobs.filter(job => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLocation = !locationFilter || job.location.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesType = !typeFilter || job.employment_type === typeFilter;
+    
+    return matchesSearch && matchesLocation && matchesType;
+  });
+
+  // Get unique locations for filter options
+  const uniqueLocations = [...new Set(openJobs.map(job => job.location))];
 
   // Format salary range
   const formatSalary = (job: Job) => {
@@ -93,18 +71,6 @@ export default function CareersPage() {
       return `Up to ${currencySymbol}${job.salary_max?.toLocaleString()}`;
     }
   };
-
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLocation = !locationFilter || job.location.toLowerCase().includes(locationFilter.toLowerCase());
-    const matchesType = !typeFilter || job.employment_type === typeFilter;
-    
-    return matchesSearch && matchesLocation && matchesType;
-  });
-
-  const uniqueLocations = [...new Set(jobs.map(job => job.location))];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,24 +104,24 @@ export default function CareersPage() {
           <div className="flex justify-center space-x-4">
             <div className="bg-white/20 rounded-lg px-6 py-3">
               <p className="text-sm text-blue-100">Open Positions</p>
-              <p className="text-2xl font-bold">{loading ? '...' : jobs.length}</p>
+              <p className="text-2xl font-bold">{showLoading ? '...' : openJobs.length}</p>
             </div>
             <div className="bg-white/20 rounded-lg px-6 py-3">
               <p className="text-sm text-blue-100">Companies</p>
-              <p className="text-2xl font-bold">{loading ? '...' : new Set(jobs.map(job => job.company)).size}</p>
+              <p className="text-2xl font-bold">{showLoading ? '...' : new Set(openJobs.map(job => job.company)).size}</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Error State */}
-      {error && (
+      {publicJobsError && (
         <section className="bg-red-50 border-b border-red-200 py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <p className="text-red-800 mb-4">{error}</p>
+              <p className="text-red-800 mb-4">{publicJobsError}</p>
               <button
-                onClick={fetchJobs}
+                onClick={refreshPublicJobs}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Try Again
@@ -166,19 +132,73 @@ export default function CareersPage() {
       )}
 
       {/* Loading State */}
-      {loading && (
+      {showLoading && (
         <section className="bg-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">Loading available positions...</p>
+            {/* Hero Section Skeleton */}
+            <div className="text-center mb-8">
+              <div className="h-8 w-64 bg-gray-200 rounded mx-auto mb-4 animate-pulse"></div>
+              <div className="h-6 w-96 bg-gray-200 rounded mx-auto mb-8 animate-pulse"></div>
+              <div className="flex justify-center space-x-4">
+                <div className="bg-gray-200 rounded-lg px-6 py-3 animate-pulse">
+                  <div className="h-4 w-20 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-6 w-8 bg-gray-300 rounded"></div>
+                </div>
+                <div className="bg-gray-200 rounded-lg px-6 py-3 animate-pulse">
+                  <div className="h-4 w-16 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-6 w-8 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Filters Skeleton */}
+            <div className="bg-white py-8 border-b mb-8">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+                <div className="lg:w-48">
+                  <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+                <div className="lg:w-48">
+                  <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Jobs List Skeleton */}
+            <div className="space-y-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="h-6 w-3/4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                        <div className="h-4 w-1/2 bg-gray-200 rounded mb-4 animate-pulse"></div>
+                      </div>
+                      <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 w-36 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <div className="h-6 w-20 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="h-6 w-28 bg-gray-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="h-4 w-full bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
       )}
 
       {/* Search and Filters */}
-      {!loading && !error && (
+      {!showLoading && !publicJobsError && (
       <section className="bg-white py-8 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -231,7 +251,7 @@ export default function CareersPage() {
       )}
 
       {/* Jobs List */}
-      {!loading && !error && (
+      {!showLoading && !publicJobsError && (
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
@@ -330,7 +350,7 @@ export default function CareersPage() {
               <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
               <p className="text-gray-600">
-                  {jobs.length === 0 
+                  {openJobs.length === 0 
                     ? 'No open positions available at the moment. Please check back later.'
                     : 'Try adjusting your search criteria or filters to find more opportunities.'
                   }

@@ -15,7 +15,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { getJobs, getApplicants, Job, Applicant } from '@/lib/api';
+import { useData } from '@/contexts/DataContext';
+import { Job, Applicant } from '@/lib/api';
 
 // Dashboard statistics interface
 interface DashboardStats {
@@ -26,6 +27,18 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+  const { 
+    jobs, 
+    jobsLoading, 
+    jobsError, 
+    applicants, 
+    applicantsLoading, 
+    applicantsError,
+    shortlistedApplicants,
+    refreshJobs,
+    refreshApplicants
+  } = useData();
+
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     totalJobs: 0,
     totalApplications: 0,
@@ -33,9 +46,6 @@ export default function Dashboard() {
     rejectedApplications: 0
   });
   const [recentJobs, setRecentJobs] = useState<Job[]>([]);
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -44,56 +54,31 @@ export default function Dashboard() {
     day: 'numeric'
   });
 
-  // Fetch dashboard data
+  // Calculate dashboard statistics when data changes
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    if (!jobsLoading && !applicantsLoading) {
+      const totalJobs = jobs.length;
+      const totalApplications = applicants.length;
+      const shortlistedCandidates = shortlistedApplicants.length;
+      const rejectedApplications = applicants.filter((applicant: Applicant) => 
+        applicant.applicationStatus === 'REJECTED'
+      ).length;
 
-        // Fetch jobs and applicants in parallel
-        const [jobs, applicantsData] = await Promise.all([
-          getJobs(),
-          getApplicants()
-        ]);
+      setDashboardStats({
+        totalJobs,
+        totalApplications,
+        shortlistedCandidates,
+        rejectedApplications
+      });
 
-        // Calculate statistics
-        const totalJobs = jobs.length;
-        const totalApplications = applicantsData.length;
-        const shortlistedCandidates = applicantsData.filter((applicant: Applicant) => 
-          applicant.applicationStatus === 'SHORTLISTED'
-        ).length;
-        const rejectedApplications = applicantsData.filter((applicant: Applicant) => 
-          applicant.applicationStatus === 'REJECTED'
-        ).length;
+      // Get recent jobs (sorted by creation date, most recent first)
+      const sortedJobs = jobs
+        .sort((a: Job, b: Job) => b.createdAt - a.createdAt)
+        .slice(0, 5); // Show only the 5 most recent jobs
 
-        setDashboardStats({
-          totalJobs,
-          totalApplications,
-          shortlistedCandidates,
-          rejectedApplications
-        });
-
-        // Store applicants data for application count calculations
-        setApplicants(applicantsData);
-
-        // Get recent jobs (sorted by creation date, most recent first)
-        const sortedJobs = jobs
-          .sort((a: Job, b: Job) => b.createdAt - a.createdAt)
-          .slice(0, 5); // Show only the 5 most recent jobs
-
-        setRecentJobs(sortedJobs);
-
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
+      setRecentJobs(sortedJobs);
+    }
+  }, [jobs, applicants, jobsLoading, applicantsLoading, shortlistedApplicants]);
 
   // Format salary range
   const formatSalary = (job: Job) => {
@@ -119,6 +104,9 @@ export default function Dashboard() {
     return jobApplicants.length;
   };
 
+  const loading = jobsLoading || applicantsLoading;
+  const error = jobsError || applicantsError;
+
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-full flex items-center justify-center">
@@ -133,19 +121,30 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="p-6 bg-gray-50 min-h-full">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-full mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
+            <div className="flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-red-800 font-medium">Error Loading Dashboard</p>
+              <p className="text-red-800">{error}</p>
             </div>
-            <p className="text-red-700">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Try Again
-            </button>
+            <div className="mt-4 space-x-2">
+              {jobsError && (
+                <button 
+                  onClick={refreshJobs}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Retry Jobs
+                </button>
+              )}
+              {applicantsError && (
+                <button 
+                  onClick={refreshApplicants}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Retry Applicants
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

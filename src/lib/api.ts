@@ -2,6 +2,28 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
+// Cache for storing API responses
+const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+// Request deduplication
+const pendingRequests = new Map<string, Promise<any>>();
+
+// Cache TTL in milliseconds (5 minutes)
+const CACHE_TTL = 5 * 60 * 1000;
+
+// Clear expired cache entries
+const cleanupCache = () => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > value.ttl) {
+      cache.delete(key);
+    }
+  }
+};
+
+// Run cleanup every minute
+setInterval(cleanupCache, 60 * 1000);
+
 async function getAuthToken() {
   try {
     const session = await fetchAuthSession();
@@ -11,6 +33,33 @@ async function getAuthToken() {
     return null;
   }
 }
+
+// Generic cached fetch function
+const cachedFetch = async (key: string, fetchFn: () => Promise<any>, ttl: number = CACHE_TTL) => {
+  // Check if request is already pending
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key);
+  }
+
+  // Check cache first
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    return cached.data;
+  }
+
+  // Create new request
+  const request = fetchFn().then(data => {
+    cache.set(key, { data, timestamp: Date.now(), ttl });
+    pendingRequests.delete(key);
+    return data;
+  }).catch(error => {
+    pendingRequests.delete(key);
+    throw error;
+  });
+
+  pendingRequests.set(key, request);
+  return request;
+};
 
 // Function for authenticated API calls (for admin panel)
 export const authenticatedFetch = async (endpoint: string, options: RequestInit = {}) => {
@@ -32,24 +81,42 @@ export const authenticatedFetch = async (endpoint: string, options: RequestInit 
   return response.json();
 };
 
-// Function for public API calls (for applicant portal)
+// Function for public API calls (for applicant portal) with timeout
 export const publicFetch = async (endpoint: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   
-  const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  // Add timeout to prevent hanging requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
   
-  if (!response.ok) {
-    const errorBody = await response.json();
-    throw new Error(errorBody.error || `API call failed: ${response.statusText}`);
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, { 
+      ...options, 
+      headers,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.error || `API call failed: ${response.statusText}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw error;
   }
-  
-  return response.json();
-}; 
+};
 
-// Jobs API functions
+// Jobs API functions with caching
 export const getJobs = async () => {
-  return authenticatedFetch('/jobs');
+  return cachedFetch('jobs', () => authenticatedFetch('/jobs'));
 };
 
 export const getJobById = async (id: string) => {
@@ -57,7 +124,19 @@ export const getJobById = async (id: string) => {
   if (!id || id === 'undefined') {
     throw new Error('Invalid job ID provided');
   }
-  return authenticatedFetch(`/jobs/${id}`);
+  return cachedFetch(`job-${id}`, () => authenticatedFetch(`/jobs/${id}`));
+};
+
+// Batch fetch multiple jobs by IDs
+export const getJobsByIds = async (ids: string[]) => {
+  if (!ids.length) return [];
+  
+  // Use Promise.all for parallel requests with caching
+  const jobs = await Promise.all(
+    ids.map(id => getJobById(id))
+  );
+  
+  return jobs;
 };
 
 export const createJob = async (jobData: {
@@ -148,13 +227,13 @@ export const deleteJob = async (id: string) => {
   }
 };
 
-// Public jobs API for careers page
+// Public jobs API for careers page with caching
 export const getPublicJobs = async () => {
-  return publicFetch('/jobs');
+  return cachedFetch('public-jobs', () => publicFetch('/jobs'), 15 * 60 * 1000); // 15 minutes TTL for public jobs
 };
 
 export const getPublicJobById = async (id: string) => {
-  return publicFetch(`/jobs/${id}`);
+  return cachedFetch(`public-job-${id}`, () => publicFetch(`/jobs/${id}`), 15 * 60 * 1000); // 15 minutes TTL for public jobs
 };
 
 // Submit job application with file upload
@@ -231,9 +310,36 @@ export const submitApplication = async (applicationData: {
   }
 };
 
-// Applicants API functions
+// Applicants API functions with caching
 export const getApplicants = async () => {
-  return authenticatedFetch('/applicants');
+  return cachedFetch('applicants', () => authenticatedFetch('/applicants'));
+};
+
+// Batch fetch applicants with job titles (optimized)
+export const getApplicantsWithJobTitles = async () => {
+  return cachedFetch('applicants-with-jobs', async () => {
+    const [applicants, jobs] = await Promise.all([
+      authenticatedFetch('/applicants'),
+      authenticatedFetch('/jobs')
+    ]);
+
+    // Create a map of job IDs to job titles for O(1) lookup
+    const jobTitleMap = new Map(jobs.map((job: any) => [job.jobId, job.title]));
+
+    // Add job titles to applicants
+    return applicants.map((applicant: any) => ({
+      ...applicant,
+      jobTitle: jobTitleMap.get(applicant.jobId) || 'Unknown Job'
+    }));
+  });
+};
+
+// Get applicants by status with job titles
+export const getApplicantsByStatus = async (status: string) => {
+  return cachedFetch(`applicants-${status}`, async () => {
+    const applicantsWithJobs = await getApplicantsWithJobTitles();
+    return applicantsWithJobs.filter((applicant: any) => applicant.applicationStatus === status);
+  });
 };
 
 // Update applicant status
@@ -257,6 +363,11 @@ export const updateApplicantStatus = async (applicantId: string, jobId: string, 
       const errorBody = await response.json();
       throw new Error(errorBody.error || `API call failed: ${response.statusText}`);
     }
+
+    // Invalidate related cache entries
+    cache.delete('applicants');
+    cache.delete('applicants-with-jobs');
+    cache.delete(`applicants-${status}`);
     
     return response.json();
   } catch (error) {
@@ -267,7 +378,7 @@ export const updateApplicantStatus = async (applicantId: string, jobId: string, 
 
 // Get pre-signed URL for viewing resume
 export const getResumeDownloadUrl = async (applicantId: string) => {
-  return authenticatedFetch(`/applicants/${applicantId}/resume`);
+  return cachedFetch(`resume-${applicantId}`, () => authenticatedFetch(`/applicants/${applicantId}/resume`), 10 * 60 * 1000); // 10 minutes TTL for resume URLs
 };
 
 // Type definition for Job (for reference)

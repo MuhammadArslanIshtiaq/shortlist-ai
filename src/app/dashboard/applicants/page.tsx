@@ -16,8 +16,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getApplicants, Applicant, getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
-import { getJobById } from '@/lib/api';
+import { getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
+import { useData } from '@/contexts/DataContext';
+import { Applicant } from '@/lib/api';
 
 // Filter Modal Component
 const FilterModal = ({ 
@@ -467,9 +468,13 @@ const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: {
 };
 
 export default function AllApplicants() {
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    applicants, 
+    applicantsLoading, 
+    applicantsError, 
+    refreshApplicants 
+  } = useData();
+
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     job: '',
@@ -479,82 +484,40 @@ export default function AllApplicants() {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchApplicants();
-  }, []);
-
-  const fetchJobTitle = async (jobId: string): Promise<string> => {
-    try {
-      const job = await getJobById(jobId);
-      return job.title || 'Unknown Job';
-    } catch (err) {
-      console.error(`Failed to fetch job title for jobId ${jobId}:`, err);
-      return 'Unknown Job';
-    }
-  };
-
-  const fetchApplicants = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getApplicants();
-      
-      // Fetch job titles for all applicants
-      const applicantsWithJobTitles = await Promise.all(
-        data.map(async (applicant: Applicant) => {
-          const jobTitle = await fetchJobTitle(applicant.jobId);
-          return { ...applicant, jobTitle };
-        })
-      );
-      
-      setApplicants(applicantsWithJobTitles);
-    } catch (err) {
-      console.error('Failed to fetch applicants:', err);
-      setError('Failed to load applicants. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get unique jobs and locations for filter options
   const uniqueJobs = [...new Set(applicants.map(a => a.jobTitle).filter((job): job is string => Boolean(job)))];
   const uniqueLocations = [...new Set(applicants.map(a => a.location).filter((location): location is string => Boolean(location)))];
 
   // Filter applicants based on search and filters
-  const filteredApplicants = applicants.filter((applicant: Applicant) => {
-    const fullName = `${applicant.firstName} ${applicant.lastName}`;
-    
-    // Search filter
-    const matchesSearch = searchTerm === '' || 
-      fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredApplicants = applicants.filter(applicant => {
+    const matchesSearch = 
+      applicant.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      applicant.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (applicant.jobTitle && applicant.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    // Job filter
-    const matchesJob = filters.job === '' || applicant.jobTitle === filters.job;
-
-    // Location filter
-    const matchesLocation = filters.location === '' || applicant.location === filters.location;
-
-    // Score filter
-    const minScore = filters.minScore === '' ? 0 : parseInt(filters.minScore);
-    const maxScore = filters.maxScore === '' ? 100 : parseInt(filters.maxScore);
-    const matchesScore = applicant.matchingScore ? (applicant.matchingScore >= minScore && applicant.matchingScore <= maxScore) : true;
-
-    return matchesSearch && matchesJob && matchesLocation && matchesScore;
+    
+    const matchesJob = !filters.job || applicant.jobTitle === filters.job;
+    const matchesLocation = !filters.location || applicant.location.toLowerCase().includes(filters.location.toLowerCase());
+    
+    const score = applicant.matchingScore || 0;
+    const matchesMinScore = !filters.minScore || score >= parseFloat(filters.minScore);
+    const matchesMaxScore = !filters.maxScore || score <= parseFloat(filters.maxScore);
+    
+    return matchesSearch && matchesJob && matchesLocation && matchesMinScore && matchesMaxScore;
   });
 
-  // Function to handle status updates
-  const handleStatusUpdate = (applicantId: string, newStatus: string) => {
-    setApplicants(prev => prev.map(applicant => 
-      applicant.applicantId === applicantId 
-        ? { ...applicant, applicationStatus: newStatus }
-        : applicant
-    ));
+  const handleStatusUpdate = async (applicantId: string, jobId: string, newStatus: string) => {
+    try {
+      await updateApplicantStatus(applicantId, jobId, newStatus);
+      // Refresh applicants data to get updated status
+      await refreshApplicants();
+    } catch (error) {
+      console.error('Failed to update applicant status:', error);
+      alert('Failed to update applicant status. Please try again.');
+    }
   };
 
-  // Function to handle resume viewing
-  const handleViewResume = async (applicantId: string) => {
+  const handleResumeView = async (applicantId: string) => {
     try {
       const { downloadUrl } = await getResumeDownloadUrl(applicantId);
       window.open(downloadUrl, '_blank');
@@ -564,7 +527,7 @@ export default function AllApplicants() {
     }
   };
 
-  if (loading) {
+  if (applicantsLoading) {
     return (
       <div className="p-6 bg-gray-50 min-h-full flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -575,15 +538,15 @@ export default function AllApplicants() {
     );
   }
 
-  if (error) {
+  if (applicantsError) {
     return (
       <div className="p-6 bg-gray-50 min-h-full">
         <div className="max-w-full mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">{error}</p>
+            <p className="text-red-800">{applicantsError}</p>
             <div className="mt-4">
               <button 
-                onClick={fetchApplicants}
+                onClick={refreshApplicants}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Try Again
@@ -689,7 +652,7 @@ export default function AllApplicants() {
                     <td className="px-6 py-4">
                         {applicant.resumeS3Uri ? (
                           <button
-                            onClick={() => applicant.resumeS3Uri && handleViewResume(applicant.applicantId)}
+                            onClick={() => applicant.resumeS3Uri && handleResumeView(applicant.applicantId)}
                         className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium"
                       >
                         <FileText className="w-4 h-4 mr-1" />
@@ -701,7 +664,7 @@ export default function AllApplicants() {
                     </td>
                     <td className="px-6 py-4">
                         <ActionDropdown applicantId={applicant.applicantId} jobId={applicant.jobId} onStatusUpdate={(newStatus) => {
-                          handleStatusUpdate(applicant.applicantId, newStatus);
+                          handleStatusUpdate(applicant.applicantId, applicant.jobId, newStatus);
                         }} />
                     </td>
                   </tr>
