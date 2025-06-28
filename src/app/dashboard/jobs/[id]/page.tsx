@@ -1158,59 +1158,23 @@ export default function JobDetail() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('JobDetail useEffect - jobId:', jobId, 'params:', params, 'typeof jobId:', typeof jobId);
-    
-    // Check if jobId is valid (not undefined, null, empty string, or the string "undefined")
-    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
-      fetchJob();
-    } else {
+    if (!jobId || jobId === 'undefined' || jobId === 'null') {
       console.error('Invalid jobId:', jobId);
-      setError(`Invalid job ID: ${jobId}`);
-      setLoading(false);
-    }
-  }, [jobId]);
-
-  const fetchJob = async () => {
-    // Additional validation
-    if (!jobId || jobId === 'undefined' || jobId === 'null' || jobId.trim() === '') {
-      console.error('fetchJob called with invalid jobId:', jobId);
-      setError(`Invalid job ID: ${jobId}`);
-      setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('Fetching job with ID:', jobId);
-      const jobData = await getJobById(jobId);
-      setJob(jobData);
-      
-      // Fetch applicant statistics
-      await fetchApplicantStats();
-    } catch (err) {
-      console.error('Failed to fetch job:', err);
-      setError('Failed to load job details. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchJob = async () => {
+      try {
+        const jobData = await getJobById(jobId);
+        setJob(jobData);
+      } catch (err) {
+        console.error('Failed to fetch job:', err);
+        setError('Failed to load job details. Please try again.');
+      }
+    };
 
-  const fetchApplicantStats = async () => {
-    try {
-      const allApplicants = await getApplicants();
-      const jobApplicants = allApplicants.filter((applicant: Applicant) => applicant.jobId === jobId);
-      const shortlistedApplicants = jobApplicants.filter((applicant: Applicant) => applicant.applicationStatus === 'SHORTLISTED');
-      
-      setApplicantStats({
-        totalApplicants: jobApplicants.length,
-        shortlistedApplicants: shortlistedApplicants.length
-      });
-    } catch (err) {
-      console.error('Failed to fetch applicant stats:', err);
-      // Don't set error here as it's not critical for the main job display
-    }
-  };
+    fetchJob();
+  }, [jobId]);
 
   const handleJobStatusChange = async (status: string) => {
     if (!job || !jobId || jobId === 'undefined' || jobId === 'null') return;
@@ -1241,10 +1205,8 @@ export default function JobDetail() {
     if (!jobId || jobId === 'undefined' || jobId === 'null') return;
     
     try {
-      console.log('Attempting to delete job:', jobId);
       await deleteJob(jobId);
-      console.log('Job deleted successfully');
-    setIsDeleteModalOpen(false);
+      setIsDeleteModalOpen(false);
       router.push('/dashboard/jobs');
     } catch (err) {
       console.error('Failed to delete job:', err);
@@ -1296,7 +1258,20 @@ export default function JobDetail() {
             <p className="text-red-800">{error || 'Job not found'}</p>
             <div className="mt-4 flex space-x-3">
               <button 
-                onClick={fetchJob}
+                onClick={() => {
+                  if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+                    const fetchJob = async () => {
+                      try {
+                        const jobData = await getJobById(jobId);
+                        setJob(jobData);
+                      } catch (err) {
+                        console.error('Failed to fetch job:', err);
+                        setError('Failed to load job details. Please try again.');
+                      }
+                    };
+                    fetchJob();
+                  }
+                }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Try Again

@@ -66,18 +66,10 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
       return;
     }
 
-    console.log(`Attempting to connect to WebSocket (attempt ${connectionAttempts + 1}/${maxRetries}):`, socketUrl);
-    console.log("Environment check:", {
-      hasEnvVar: !!process.env.NEXT_PUBLIC_WEBSOCKET_URL,
-      envValue: process.env.NEXT_PUBLIC_WEBSOCKET_URL,
-      fallbackUrl: 'wss://m1449b7nei.execute-api.us-west-2.amazonaws.com/v1/'
-    });
-
     try {
       const ws = new WebSocket(socketUrl);
 
       ws.onopen = () => {
-        console.log("✅ WebSocket connection established successfully.");
         setIsConnected(true);
         setIsFallbackMode(false);
         setConnectionAttempts(0);
@@ -85,17 +77,11 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
       ws.onmessage = (event) => {
         try {
-          console.log("📨 WebSocket message received:", event.data);
-          console.log("📨 Raw message type:", typeof event.data);
-          console.log("📨 Message length:", event.data.length);
-          
           const data = JSON.parse(event.data);
-          console.log("📨 Parsed data:", data);
           
           const messageId = data.messageId || generateMessageId(data);
           
           if (processedMessageIds.current.has(messageId)) {
-            console.log("🔄 Duplicate message detected, skipping:", messageId);
             return;
           }
           
@@ -104,7 +90,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
           const recentTime = recentNotifications.current.get(recentKey);
           
           if (recentTime && (now - recentTime) < 5000) {
-            console.log("🔄 Recent similar notification detected, skipping:", recentKey);
             return;
           }
           
@@ -119,8 +104,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
             message: data.message || getDefaultMessage(data),
             messageId: messageId
           };
-
-          console.log("📨 Created notification:", notification);
           
           processedMessageIds.current.add(messageId);
           recentNotifications.current.set(recentKey, now);
@@ -139,7 +122,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
           
           setLastMessage(notification);
           setNotifications(prev => [notification, ...prev.slice(0, 49)]);
-          console.log("📨 Notification added to state");
         } catch (error) {
           console.error("❌ Error parsing WebSocket message:", error);
           console.error("❌ Raw message that failed to parse:", event.data);
@@ -147,15 +129,9 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
       };
 
       ws.onclose = (event) => {
-        console.log("🔌 WebSocket connection closed:", {
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean
-        });
         setIsConnected(false);
         
         if (event.code !== 1000 && connectionAttempts < maxRetries) {
-          console.log(`🔄 Connection closed unexpectedly. Retrying in 3 seconds...`);
           setTimeout(() => {
             setConnectionAttempts(prev => prev + 1);
             connectWebSocket();
@@ -203,7 +179,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     connectWebSocket();
 
     return () => {
-      console.log('Cleaning up WebSocket connection');
       if (socket) {
         socket.close();
       }

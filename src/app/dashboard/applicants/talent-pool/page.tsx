@@ -281,7 +281,6 @@ const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: {
   });
 
   const handleAction = async (action: string) => {
-    console.log(`${action} for applicant ${applicantId}`);
     setIsOpen(false);
     
     try {

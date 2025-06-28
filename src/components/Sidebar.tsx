@@ -57,18 +57,8 @@ export default function Sidebar() {
 
   return (
     <div className="w-64 bg-white flex flex-col">
-      {/* Logo Section */}
-      <div className="h-20 border-b border-gray-200 flex items-center px-6">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">AI</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900">Shortlist AI</span>
-        </div>
-      </div>
-
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 pt-6">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;

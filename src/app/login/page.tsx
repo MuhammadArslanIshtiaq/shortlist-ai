@@ -334,34 +334,27 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 mb-2 font-medium">Demo HR Credentials:</p>
-            <p className="text-xs text-gray-500">Email: hr@shortlistai.com</p>
-            <p className="text-xs text-gray-500">Password: hr123</p>
-          </div>
-        </div>
-
-        {/* Public Careers Link */}
-        <div className="text-center">
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Building2 className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">Looking for a job?</span>
+          {/* Public Careers Link */}
+          <div className="text-center mt-8">
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <Building2 className="w-4 h-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Looking for a job?</span>
+              </div>
+              <Link 
+                href="/careers" 
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                View our open positions →
+              </Link>
             </div>
-            <Link 
-              href="/careers" 
-              className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              View our open positions →
-            </Link>
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-gray-500">
-            © 2024 Shortlist AI. All rights reserved.
+            © 2025 Shortlist AI. All rights reserved.
           </p>
         </div>
       </div>

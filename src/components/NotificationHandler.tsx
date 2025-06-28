@@ -10,16 +10,12 @@ export default function NotificationHandler() {
   const lastProcessedMessageId = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log("🔔 NotificationHandler: lastMessage changed:", lastMessage);
-    
     if (lastMessage && lastMessage.messageId) {
       // Check if we've already processed this message
       if (lastProcessedMessageId.current === lastMessage.messageId) {
-        console.log("🔔 Message already processed, skipping:", lastMessage.messageId);
         return;
       }
       
-      console.log("🔔 Processing notification:", lastMessage);
       const { type, applicantName, jobTitle, score, message } = lastMessage;
       
       // Mark this message as processed
@@ -27,7 +23,6 @@ export default function NotificationHandler() {
       
       switch (type) {
         case 'NEW_APPLICANT':
-          console.log("🔔 Showing NEW_APPLICANT toast");
           toast.success(
             <div className="flex items-start space-x-3">
               <UserPlus className="w-5 h-5 text-green-600 mt-0.5" />
@@ -51,7 +46,6 @@ export default function NotificationHandler() {
           break;
           
         case 'ANALYSIS_COMPLETE':
-          console.log("🔔 Showing ANALYSIS_COMPLETE toast");
           toast.success(
             <div className="flex items-start space-x-3">
               <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -75,7 +69,6 @@ export default function NotificationHandler() {
           break;
           
         default:
-          console.log("🔔 Showing default toast for type:", type);
           toast.success(message, {
             duration: 4000,
             position: 'top-right',

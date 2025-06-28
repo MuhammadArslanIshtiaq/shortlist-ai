@@ -119,12 +119,35 @@ export const getJobs = async () => {
   return cachedFetch('jobs', () => authenticatedFetch('/jobs'));
 };
 
-export const getJobById = async (id: string) => {
-  console.log('getJobById called with id:', id, 'type:', typeof id);
-  if (!id || id === 'undefined') {
-    throw new Error('Invalid job ID provided');
+// Function to get a job by ID with caching
+export const getJobById = async (id: string): Promise<Job | null> => {
+  const cacheKey = `job-${id}`;
+  
+  // Check cache first
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    return cached.data;
   }
-  return cachedFetch(`job-${id}`, () => authenticatedFetch(`/jobs/${id}`));
+
+  // Check if request is already pending
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
+  }
+
+  // Make new request
+  const requestPromise = authenticatedFetch(`/jobs/${id}`)
+    .then(data => {
+      cache.set(cacheKey, { data, timestamp: Date.now(), ttl: CACHE_TTL });
+      pendingRequests.delete(cacheKey);
+      return data;
+    })
+    .catch(error => {
+      pendingRequests.delete(cacheKey);
+      throw error;
+    });
+
+  pendingRequests.set(cacheKey, requestPromise);
+  return requestPromise;
 };
 
 // Batch fetch multiple jobs by IDs
@@ -185,42 +208,9 @@ export const updateJob = async (id: string, jobData: {
   });
 };
 
-export const deleteJob = async (id: string) => {
+export const deleteJob = async (jobId: string): Promise<void> => {
   try {
-    const response = await fetch(`${API_URL}/jobs/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': await getAuthToken() || ''
-      }
-    });
-    
-    if (!response.ok) {
-      // Try to get error details from response
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorBody = await response.json();
-        errorMessage = errorBody.error || errorBody.message || errorMessage;
-      } catch {
-        // If response is empty or not JSON, use the status text
-        console.log('Response is not JSON, using status text');
-      }
-      throw new Error(errorMessage);
-    }
-    
-    // Check if response has content before trying to parse JSON
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      try {
-        return await response.json();
-      } catch {
-        console.log('Response is JSON but parsing failed, returning success');
-        return { success: true };
-      }
-    } else {
-      // If no JSON content type, assume success
-      return { success: true };
-    }
+    await authenticatedFetch(`/jobs/${jobId}`, { method: 'DELETE' });
   } catch (error) {
     console.error('Delete job error:', error);
     throw error;
@@ -265,8 +255,6 @@ export const submitApplication = async (applicationData: {
       portfolioUrl: applicationData.portfolio || ''
     };
 
-    console.log('Requesting presigned URL with data:', presignedRequestData);
-
     const presignedResponse = await fetch(`${API_URL}/apply`, {
       method: 'POST',
       headers: {
@@ -281,7 +269,6 @@ export const submitApplication = async (applicationData: {
     }
 
     const { applicantId, uploadUrl } = await presignedResponse.json();
-    console.log('Received presigned URL:', uploadUrl);
 
     // Step 2: Upload file directly to S3 using presigned URL with the same Content-Type
     const uploadResponse = await fetch(uploadUrl, {
@@ -296,14 +283,7 @@ export const submitApplication = async (applicationData: {
       throw new Error(`Failed to upload file to S3: ${uploadResponse.statusText}`);
     }
 
-    console.log('File uploaded successfully to S3');
-
-    return {
-      applicantId,
-      success: true,
-      message: 'Application submitted successfully'
-    };
-
+    return { success: true, applicantId };
   } catch (error) {
     console.error('Application submission error:', error);
     throw error;
