@@ -383,43 +383,54 @@ export default function JobDetailPage() {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!jobId || jobId === 'undefined' || jobId === 'null') {
-      console.error('Invalid jobId:', jobId);
-      setError('Invalid job ID');
-      setLoading(false);
-      return;
-    }
-
-    // If public jobs are still loading, wait for them
-    if (publicJobsLoading) {
-      return;
-    }
-
-    // First check if we have the job in our local state
-    const cachedJob = getJobById(jobId);
-    if (cachedJob) {
-      setJob(cachedJob);
-      setLoading(false);
-      return;
-    }
-
-    // If not in cache, fetch from API
-    const fetchJob = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const jobData = await fetchJobById(jobId);
-        setJob(jobData);
-      } catch (err) {
-        console.error('Failed to fetch job:', err);
-        setError('Failed to load job details. Please try again.');
-      } finally {
-        setLoading(false);
+    if (jobId && jobId !== 'undefined' && jobId !== 'null' && jobId.trim() !== '') {
+      // If public jobs are still loading, wait for them to finish
+      if (publicJobsLoading) {
+        return;
       }
-    };
 
-    fetchJob();
-  }, [jobId, publicJobsLoading, getJobById, fetchJobById]);
+      // First check if we have the job in cache immediately
+      const cachedJob = getJobById(jobId);
+      if (cachedJob) {
+        setJob(cachedJob);
+        setLoading(false);
+        return;
+      }
+
+      // If not in cache and public jobs are loaded but job not found, fetch individual job
+      if (publicJobs.length > 0) {
+        fetchJob();
+      } else {
+        // If no public jobs loaded yet, wait a bit more
+        const timer = setTimeout(() => {
+          fetchJob();
+        }, 1000);
+        
+        return () => clearTimeout(timer);
+      }
+    } else {
+      console.error('Invalid jobId:', jobId);
+      setError(`Invalid job ID: ${jobId}`);
+      setLoading(false);
+    }
+  }, [jobId, publicJobsLoading, publicJobs.length]);
+
+  const fetchJob = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching job with ID:', jobId);
+      
+      // Fetch from API (will be cached)
+      const jobData = await fetchJobById(jobId);
+      setJob(jobData);
+    } catch (err) {
+      console.error('Failed to fetch job:', err);
+      setError('Failed to load job details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Format salary range
   const formatSalary = (job: Job) => {

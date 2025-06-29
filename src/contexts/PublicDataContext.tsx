@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getPublicJobs, getPublicJobById, Job } from '@/lib/api';
 
 interface PublicDataContextType {
@@ -66,17 +66,17 @@ export const PublicDataProvider: React.FC<PublicDataProviderProps> = ({ children
   };
 
   // Refresh public jobs
-  const refreshPublicJobs = useCallback(async () => {
+  const refreshPublicJobs = async () => {
     await fetchPublicJobs();
-  }, []);
+  };
 
   // Get job by ID from cached data
-  const getJobById = useCallback((jobId: string): Job | undefined => {
+  const getJobById = (jobId: string): Job | undefined => {
     return publicJobs.find(job => job.jobId === jobId);
-  }, [publicJobs]);
+  };
 
   // Fetch individual job (with caching)
-  const fetchJobById = useCallback(async (jobId: string): Promise<Job> => {
+  const fetchJobById = async (jobId: string): Promise<Job> => {
     // First check if we have it in our local state
     const localJob = publicJobs.find(job => job.jobId === jobId);
     if (localJob) {
@@ -85,28 +85,28 @@ export const PublicDataProvider: React.FC<PublicDataProviderProps> = ({ children
     
     // If not in local state, fetch from API (will be cached)
     return getPublicJobById(jobId);
-  }, [publicJobs]);
+  };
 
   // Utility functions
-  const getOpenJobs = useCallback(() => {
+  const getOpenJobs = () => {
     return publicJobs.filter(job => job.status === 'OPEN');
-  }, [publicJobs]);
+  };
 
-  const getJobsByCompany = useCallback((company: string) => {
+  const getJobsByCompany = (company: string) => {
     return publicJobs.filter(job => 
       job.company.toLowerCase().includes(company.toLowerCase())
     );
-  }, [publicJobs]);
+  };
 
-  const getJobsByLocation = useCallback((location: string) => {
+  const getJobsByLocation = (location: string) => {
     return publicJobs.filter(job => 
       job.location.toLowerCase().includes(location.toLowerCase())
     );
-  }, [publicJobs]);
+  };
 
-  const getJobsByType = useCallback((type: string) => {
+  const getJobsByType = (type: string) => {
     return publicJobs.filter(job => job.employment_type === type);
-  }, [publicJobs]);
+  };
 
   // Initial data fetch
   useEffect(() => {

@@ -21,8 +21,6 @@ interface WebSocketContextType {
   clearNotifications: () => void;
   markAsRead: (index: number) => void;
   isFallbackMode: boolean;
-  isConnectionDisabled: boolean;
-  retryConnection: () => void;
   setLastMessage: (notification: Notification | null) => void;
 }
 
@@ -44,63 +42,60 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [maxRetries] = useState(3);
   const [isFallbackMode, setIsFallbackMode] = useState(false);
-  const [hasLoggedConnectionError, setHasLoggedConnectionError] = useState(false);
-  const [isConnectionDisabled, setIsConnectionDisabled] = useState(false);
   
   const processedMessageIds = useRef<Set<string>>(new Set());
   const recentNotifications = useRef<Map<string, number>>(new Map());
 
   const connectWebSocket = () => {
-    // Don't attempt to connect if disabled
-    if (isConnectionDisabled) {
-      return;
-    }
-
     const socketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'wss://m1449b7nei.execute-api.us-west-2.amazonaws.com/v1/';
     
     if (!socketUrl) {
-      if (!hasLoggedConnectionError) {
-        console.error("WebSocket URL is not defined.");
-        setHasLoggedConnectionError(true);
-      }
+      console.error("WebSocket URL is not defined.");
       setIsFallbackMode(true);
-      setIsConnectionDisabled(true);
       return;
     }
 
     if (connectionAttempts >= maxRetries) {
-      if (!hasLoggedConnectionError) {
-        console.error(`WebSocket connection failed after ${maxRetries} attempts. Giving up.`);
-        console.error("Please check:");
-        console.error("1. Your .env.local file has NEXT_PUBLIC_WEBSOCKET_URL set correctly");
-        console.error("2. Your AWS API Gateway WebSocket API is deployed");
-        console.error("3. The WebSocket URL is accessible from your browser");
-        console.error("4. See AWS_WEBSOCKET_SETUP_GUIDE.md for detailed instructions");
-        setHasLoggedConnectionError(true);
-      }
+      console.error(`WebSocket connection failed after ${maxRetries} attempts. Giving up.`);
+      console.error("Please check:");
+      console.error("1. Your .env.local file has NEXT_PUBLIC_WEBSOCKET_URL set correctly");
+      console.error("2. Your AWS API Gateway WebSocket API is deployed");
+      console.error("3. The WebSocket URL is accessible from your browser");
+      console.error("4. See AWS_WEBSOCKET_SETUP_GUIDE.md for detailed instructions");
       setIsFallbackMode(true);
-      setIsConnectionDisabled(true);
       return;
     }
+
+    console.log(`Attempting to connect to WebSocket (attempt ${connectionAttempts + 1}/${maxRetries}):`, socketUrl);
+    console.log("Environment check:", {
+      hasEnvVar: !!process.env.NEXT_PUBLIC_WEBSOCKET_URL,
+      envValue: process.env.NEXT_PUBLIC_WEBSOCKET_URL,
+      fallbackUrl: 'wss://m1449b7nei.execute-api.us-west-2.amazonaws.com/v1/'
+    });
 
     try {
       const ws = new WebSocket(socketUrl);
 
       ws.onopen = () => {
+        console.log("✅ WebSocket connection established successfully.");
         setIsConnected(true);
         setIsFallbackMode(false);
         setConnectionAttempts(0);
-        setHasLoggedConnectionError(false);
-        setIsConnectionDisabled(false);
       };
 
       ws.onmessage = (event) => {
         try {
+          console.log("📨 WebSocket message received:", event.data);
+          console.log("📨 Raw message type:", typeof event.data);
+          console.log("📨 Message length:", event.data.length);
+          
           const data = JSON.parse(event.data);
+          console.log("📨 Parsed data:", data);
           
           const messageId = data.messageId || generateMessageId(data);
           
           if (processedMessageIds.current.has(messageId)) {
+            console.log("🔄 Duplicate message detected, skipping:", messageId);
             return;
           }
           
@@ -109,6 +104,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
           const recentTime = recentNotifications.current.get(recentKey);
           
           if (recentTime && (now - recentTime) < 5000) {
+            console.log("🔄 Recent similar notification detected, skipping:", recentKey);
             return;
           }
           
@@ -123,6 +119,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
             message: data.message || getDefaultMessage(data),
             messageId: messageId
           };
+
+          console.log("📨 Created notification:", notification);
           
           processedMessageIds.current.add(messageId);
           recentNotifications.current.set(recentKey, now);
@@ -141,56 +139,52 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
           
           setLastMessage(notification);
           setNotifications(prev => [notification, ...prev.slice(0, 49)]);
+          console.log("📨 Notification added to state");
         } catch (error) {
-          if (!hasLoggedConnectionError) {
-            console.error("❌ Error parsing WebSocket message:", error);
-            console.error("❌ Raw message that failed to parse:", event.data);
-            setHasLoggedConnectionError(true);
-          }
+          console.error("❌ Error parsing WebSocket message:", error);
+          console.error("❌ Raw message that failed to parse:", event.data);
         }
       };
 
       ws.onclose = (event) => {
+        console.log("🔌 WebSocket connection closed:", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        });
         setIsConnected(false);
         
-        if (event.code !== 1000 && connectionAttempts < maxRetries && !isConnectionDisabled) {
+        if (event.code !== 1000 && connectionAttempts < maxRetries) {
+          console.log(`🔄 Connection closed unexpectedly. Retrying in 3 seconds...`);
           setTimeout(() => {
             setConnectionAttempts(prev => prev + 1);
             connectWebSocket();
           }, 3000);
         } else if (connectionAttempts >= maxRetries) {
           setIsFallbackMode(true);
-          setIsConnectionDisabled(true);
         }
       };
 
       ws.onerror = (error) => {
-        if (!hasLoggedConnectionError) {
-          console.error("❌ WebSocket connection error:", error);
-          console.error("🔍 WebSocket details:", {
-            readyState: ws.readyState,
-            url: ws.url,
-            bufferedAmount: ws.bufferedAmount
-          });
-          console.error("💡 ReadyState meanings:");
-          console.error("  0: CONNECTING");
-          console.error("  1: OPEN");
-          console.error("  2: CLOSING");
-          console.error("  3: CLOSED");
-          setHasLoggedConnectionError(true);
-        }
+        console.error("❌ WebSocket connection error:", error);
+        console.error("🔍 WebSocket details:", {
+          readyState: ws.readyState,
+          url: ws.url,
+          bufferedAmount: ws.bufferedAmount
+        });
+        console.error("💡 ReadyState meanings:");
+        console.error("  0: CONNECTING");
+        console.error("  1: OPEN");
+        console.error("  2: CLOSING");
+        console.error("  3: CLOSED");
         setIsConnected(false);
       };
 
       setSocket(ws);
     } catch (error) {
-      if (!hasLoggedConnectionError) {
-        console.error("❌ Error creating WebSocket connection:", error);
-        setHasLoggedConnectionError(true);
-      }
+      console.error("❌ Error creating WebSocket connection:", error);
       setIsConnected(false);
       setIsFallbackMode(true);
-      setIsConnectionDisabled(true);
     }
   };
 
@@ -209,6 +203,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     connectWebSocket();
 
     return () => {
+      console.log('Cleaning up WebSocket connection');
       if (socket) {
         socket.close();
       }
@@ -248,15 +243,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     setNotifications(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Manual retry function
-  const retryConnection = () => {
-    setConnectionAttempts(0);
-    setHasLoggedConnectionError(false);
-    setIsConnectionDisabled(false);
-    setIsFallbackMode(false);
-    connectWebSocket();
-  };
-
   return (
     <WebSocketContext.Provider value={{ 
       lastMessage, 
@@ -265,8 +251,6 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
       clearNotifications, 
       markAsRead,
       isFallbackMode,
-      isConnectionDisabled,
-      retryConnection,
       setLastMessage
     }}>
       {children}

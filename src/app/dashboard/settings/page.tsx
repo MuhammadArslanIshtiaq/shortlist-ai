@@ -1,6 +1,7 @@
 'use client';
 
-import { Settings, User, Bell, Shield, Database, Palette } from 'lucide-react';
+import { Settings, User, Bell, Shield, Database, Palette, Wifi } from 'lucide-react';
+import WebSocketTest from '@/components/WebSocketTest';
 
 export default function SettingsPage() {
   return (
@@ -15,6 +16,11 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
           </div>
           <p className="text-gray-600">Manage your account settings and preferences.</p>
+        </div>
+
+        {/* WebSocket Status - Added for troubleshooting */}
+        <div className="mb-6">
+          <WebSocketTest />
         </div>
 
         {/* Settings Sections */}
