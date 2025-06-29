@@ -1,0 +1,21 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Installing dependencies with optimized settings..."
+        - npm ci --cache .npm --prefer-offline --no-audit --no-fund
+    build:
+      commands:
+        - echo "Building Next.js application with optimizations..."
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+      - .npm/**/*
+      - .npmrc 

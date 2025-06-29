@@ -1,6 +1,11 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || '';
+
+// Validate API URL is available
+if (!API_URL) {
+  console.warn('API Gateway URL not configured. API calls will fail.');
+}
 
 // Cache for storing API responses
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
