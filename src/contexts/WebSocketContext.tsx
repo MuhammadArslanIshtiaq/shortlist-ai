@@ -57,6 +57,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   
   const processedMessageIds = useRef<Set<string>>(new Set());
   const recentNotifications = useRef<Map<string, number>>(new Map());
+  const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
 
   const connectWebSocket = () => {
     const socketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'wss://m1449b7nei.execute-api.us-west-2.amazonaws.com/v1/';
@@ -93,6 +94,15 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         setIsConnected(true);
         setIsFallbackMode(false);
         setConnectionAttempts(0);
+
+        // Start the heartbeat when the connection opens
+        heartbeatInterval.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            // Send a ping message to the backend
+            ws.send(JSON.stringify({ action: 'ping', message: 'keep-alive' }));
+            console.log("💓 Sent ping to keep connection alive.");
+          }
+        }, 240000); // Send a ping every 4 minutes (well below the 10-minute timeout)
       };
 
       ws.onmessage = (event) => {
@@ -103,6 +113,12 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
           
           const data = JSON.parse(event.data);
           console.log("📨 Parsed data:", data);
+          
+          // Handle pong response from server
+          if (data.action === 'pong') {
+            console.log("💓 Received pong response from server");
+            return;
+          }
           
           const messageId = data.messageId || generateMessageId(data);
           
@@ -166,6 +182,12 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         });
         setIsConnected(false);
         
+        // Stop the heartbeat when the connection closes
+        if (heartbeatInterval.current) {
+          clearInterval(heartbeatInterval.current);
+          heartbeatInterval.current = null;
+        }
+        
         if (event.code !== 1000 && connectionAttempts < maxRetries) {
           console.log(`🔄 Connection closed unexpectedly. Retrying in 3 seconds...`);
           setTimeout(() => {
@@ -216,6 +238,11 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
     return () => {
       console.log('Cleaning up WebSocket connection');
+      // Clean up the heartbeat interval when the component unmounts
+      if (heartbeatInterval.current) {
+        clearInterval(heartbeatInterval.current);
+        heartbeatInterval.current = null;
+      }
       if (socket) {
         socket.close();
       }
