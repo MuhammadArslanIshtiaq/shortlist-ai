@@ -14,6 +14,18 @@ interface Notification {
   messageId?: string;
 }
 
+interface WebSocketData {
+  type: string;
+  applicantName?: string;
+  applicantId?: string;
+  jobTitle?: string;
+  jobId?: string;
+  score?: number;
+  message?: string;
+  messageId?: string;
+  timestamp?: number;
+}
+
 interface WebSocketContextType {
   lastMessage: Notification | null;
   isConnected: boolean;
@@ -188,7 +200,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
-  const generateMessageId = (data: any): string => {
+  const generateMessageId = (data: WebSocketData): string => {
     const components = [
       data.type,
       data.applicantId || data.applicantName,
@@ -224,7 +236,7 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     }
   }, [isFallbackMode, notifications.length]);
 
-  const getDefaultMessage = (data: any): string => {
+  const getDefaultMessage = (data: WebSocketData): string => {
     switch (data.type) {
       case 'NEW_APPLICANT':
         return `New application received from ${data.applicantName || 'an applicant'} for ${data.jobTitle || 'a job position'}`;

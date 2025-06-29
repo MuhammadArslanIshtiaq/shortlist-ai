@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, User, Bell, Shield, Database, Palette, Wifi } from 'lucide-react';
+import { Settings, User, Bell, Shield, Database, Palette } from 'lucide-react';
 import WebSocketTest from '@/components/WebSocketTest';
 
 export default function SettingsPage() {

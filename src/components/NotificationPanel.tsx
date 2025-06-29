@@ -7,7 +7,6 @@ import {
   X, 
   UserPlus, 
   Brain, 
-  CheckCircle, 
   Trash2,
   Clock
 } from 'lucide-react';
@@ -114,7 +113,7 @@ export default function NotificationPanel() {
               <div className="p-6 text-center text-gray-500">
                 <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p>No notifications yet</p>
-                <p className="text-sm">You'll see real-time updates here</p>
+                <p className="text-sm">You&apos;ll see real-time updates here</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">

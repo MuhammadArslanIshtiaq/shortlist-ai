@@ -18,7 +18,6 @@ import {
 import { useState, useEffect } from 'react';
 import { getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
 import { useData } from '@/contexts/DataContext';
-import { Applicant } from '@/lib/api';
 
 // Filter Modal Component
 const FilterModal = ({ 

@@ -3,9 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
   getJobs, 
-  getApplicants, 
   getApplicantsWithJobTitles, 
-  getApplicantsByStatus,
   Job, 
   Applicant 
 } from '@/lib/api';

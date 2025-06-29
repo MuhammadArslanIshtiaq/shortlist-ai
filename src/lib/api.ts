@@ -7,11 +7,18 @@ if (!API_URL) {
   console.warn('API Gateway URL not configured. API calls will fail.');
 }
 
+// Type definitions for cache
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
 // Cache for storing API responses
-const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+const cache = new Map<string, CacheEntry<unknown>>();
 
 // Request deduplication
-const pendingRequests = new Map<string, Promise<any>>();
+const pendingRequests = new Map<string, Promise<unknown>>();
 
 // Cache TTL in milliseconds (5 minutes)
 const CACHE_TTL = 5 * 60 * 1000;
@@ -40,20 +47,20 @@ async function getAuthToken() {
 }
 
 // Generic cached fetch function
-const cachedFetch = async (key: string, fetchFn: () => Promise<any>, ttl: number = CACHE_TTL) => {
+const cachedFetch = async <T>(key: string, fetchFn: () => Promise<T>, ttl: number = CACHE_TTL): Promise<T> => {
   // Check if request is already pending
   if (pendingRequests.has(key)) {
-    return pendingRequests.get(key);
+    return pendingRequests.get(key) as Promise<T>;
   }
 
   // Check cache first
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
-    return cached.data;
+    return cached.data as T;
   }
 
   // Create new request
-  const request = fetchFn().then(data => {
+  const request = fetchFn().then((data: T) => {
     cache.set(key, { data, timestamp: Date.now(), ttl });
     pendingRequests.delete(key);
     return data;
@@ -329,10 +336,10 @@ export const getApplicantsWithJobTitles = async () => {
     ]);
 
     // Create a map of job IDs to job titles for O(1) lookup
-    const jobTitleMap = new Map(jobs.map((job: any) => [job.jobId, job.title]));
+    const jobTitleMap = new Map(jobs.map((job: Job) => [job.jobId, job.title]));
 
     // Add job titles to applicants
-    return applicants.map((applicant: any) => ({
+    return applicants.map((applicant: Applicant) => ({
       ...applicant,
       jobTitle: jobTitleMap.get(applicant.jobId) || 'Unknown Job'
     }));
@@ -343,7 +350,7 @@ export const getApplicantsWithJobTitles = async () => {
 export const getApplicantsByStatus = async (status: string) => {
   return cachedFetch(`applicants-${status}`, async () => {
     const applicantsWithJobs = await getApplicantsWithJobTitles();
-    return applicantsWithJobs.filter((applicant: any) => applicant.applicationStatus === status);
+    return applicantsWithJobs.filter((applicant: Applicant) => applicant.applicationStatus === status);
   });
 };
 

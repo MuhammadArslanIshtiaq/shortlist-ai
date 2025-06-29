@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, signOut } from 'aws-amplify/auth';
+import { getCurrentUser } from 'aws-amplify/auth';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import NotificationHandler from '@/components/NotificationHandler';
-import NotificationPanel from '@/components/NotificationPanel';
 
 export default function DashboardLayout({
   children,
@@ -31,15 +30,6 @@ export default function DashboardLayout({
     checkAuth();
     setIsLoading(false);
   }, [router]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   if (isLoading) {
     return (

@@ -3,18 +3,16 @@
 import { User, Search, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { signOut, getCurrentUser } from 'aws-amplify/auth';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import NotificationPanel from './NotificationPanel';
 
 export default function Header() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   useEffect(() => {
     const getUserInfo = async () => {
       try {
-        const user = await getCurrentUser();
-        setUserEmail(user.username);
+        await getCurrentUser();
       } catch (error) {
         console.error('Error getting user info:', error);
       }

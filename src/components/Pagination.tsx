@@ -7,7 +7,6 @@ interface PaginationProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   totalItems: number;
-  itemsPerPage: number;
   showingStart: number;
   showingEnd: number;
 }
@@ -17,7 +16,6 @@ export default function Pagination({
   totalPages,
   onPageChange,
   totalItems,
-  itemsPerPage,
   showingStart,
   showingEnd
 }: PaginationProps) {
@@ -32,15 +30,13 @@ export default function Pagination({
       }
     } else {
       // Show pages around current page
-      let start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-      let end = Math.min(totalPages, start + maxVisiblePages - 1);
+      const start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      const end = Math.min(totalPages, start + maxVisiblePages - 1);
       
       // Adjust start if we're near the end
-      if (end === totalPages) {
-        start = Math.max(1, end - maxVisiblePages + 1);
-      }
+      const adjustedStart = end === totalPages ? Math.max(1, end - maxVisiblePages + 1) : start;
       
-      for (let i = start; i <= end; i++) {
+      for (let i = adjustedStart; i <= end; i++) {
         pages.push(i);
       }
     }

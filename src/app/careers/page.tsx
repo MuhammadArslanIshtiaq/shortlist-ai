@@ -8,8 +8,7 @@ import {
   Calendar, 
   Building2,
   Search,
-  ExternalLink,
-  Loader2
+  ExternalLink
 } from 'lucide-react';
 import { usePublicData } from '@/contexts/PublicDataContext';
 import { Job } from '@/lib/api';

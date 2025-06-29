@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import toast, { Toaster } from 'react-hot-toast';
-import { CheckCircle, UserPlus, Brain, X } from 'lucide-react';
+import { UserPlus, Brain } from 'lucide-react';
 
 export default function NotificationHandler() {
   const { lastMessage } = useWebSocket();
