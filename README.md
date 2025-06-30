@@ -86,6 +86,16 @@ The entire backend was built manually in the AWS Management Console to ensure a 
 - An SNS topic named `TextractCompletionTopic` was created to act as a messaging bus, decoupling the text extraction process from the AI analysis process
 - Its access policy was configured to allow the Textract service to publish messages to it
 
+### AWS Lambda Functions:
+
+- A suite of single-purpose functions were created to handle all backend logic. Each is triggered by a specific event source (API Gateway, S3, or SNS).
+
+- REST API Handlers: createJob, listJobs, getJobDetails, updateJob, deleteJob, submitApplication, listAllApplicants, getResumeDownloadUrl, updateApplicantStatus.
+
+- Asynchronous Workflow: processResume (triggered by S3) and processAnalysis (triggered by SNS).
+
+- WebSocket Handlers: handleSocketConnect, handleSocketDisconnect, and handlePing.
+
 ## 🧠 The Core Role of AWS Lambda
 
 AWS Lambda is the central nervous system of the Shortlist AI application. It is the core service that powers every piece of business logic, data processing, and real-time communication. Our application leverages Lambda in multiple, distinct ways, each triggered by a different event source.
