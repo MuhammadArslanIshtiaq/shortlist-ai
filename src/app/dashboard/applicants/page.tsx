@@ -13,10 +13,11 @@ import {
   Check,
   X as CloseIcon,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getResumeDownloadUrl, updateApplicantStatus } from '@/lib/api';
+import { getResumeDownloadUrl, updateApplicantStatus, Applicant } from '@/lib/api';
 import { useData } from '@/contexts/DataContext';
 
 // Filter Modal Component
@@ -146,8 +147,8 @@ const FilterModal = ({
 };
 
 // Circular Progress Component for Scores
-const CircularProgress = ({ score }: { score: number }) => {
-  const radius = 20;
+const CircularProgress = ({ score, size = 50 }: { score: number; size?: number }) => {
+  const radius = (size - 10) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
   const offset = circumference - progress;
@@ -168,33 +169,33 @@ const CircularProgress = ({ score }: { score: number }) => {
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg className="transform -rotate-90" width="50" height="50">
-          <circle
-          cx="25"
-          cy="25"
-            r={radius}
-            stroke="currentColor"
-            strokeWidth="3"
-            fill="transparent"
-            className="text-gray-200"
-          />
-          <circle
-          cx="25"
-          cy="25"
-            r={radius}
-            stroke="currentColor"
-            strokeWidth="3"
-            fill="transparent"
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth="3"
+          fill="transparent"
+          className="text-gray-200"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth="3"
+          fill="transparent"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className={getStrokeColor(score)}
-            strokeLinecap="round"
-          />
-        </svg>
+          strokeLinecap="round"
+        />
+      </svg>
       <div className="absolute">
         <span className={`text-xs font-semibold ${getScoreColor(score)}`}>
-            {score}
-          </span>
+          {score}
+        </span>
       </div>
     </div>
   );
@@ -466,6 +467,291 @@ const ActionDropdown = ({ applicantId, jobId, onStatusUpdate }: {
   );
 };
 
+// Applicant Detail Modal Component
+const ApplicantDetailModal = ({ 
+  isOpen, 
+  onClose, 
+  applicant 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  applicant: Applicant | null; 
+}) => {
+  const [resumeLoading, setResumeLoading] = useState(false);
+
+  const handleViewResume = async () => {
+    if (!applicant) return;
+    
+    try {
+      setResumeLoading(true);
+      const { downloadUrl } = await getResumeDownloadUrl(applicant.applicantId);
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to get resume download URL:', error);
+      alert('Failed to open resume. Please try again.');
+    } finally {
+      setResumeLoading(false);
+    }
+  };
+
+  if (!isOpen || !applicant) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Applicant Details</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <CloseIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+          <div className="p-6">
+            {/* Applicant Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                  {applicant.firstName[0]}{applicant.lastName[0]}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    {applicant.firstName} {applicant.lastName}
+                  </h3>
+                  <p className="text-gray-600">{applicant.email}</p>
+                  <div className="flex items-center text-gray-500 mt-1">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    {applicant.location}
+                  </div>
+                  {applicant.jobTitle && (
+                    <p className="text-sm text-gray-500 mt-1">Applied for: {applicant.jobTitle}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                {applicant.matchingScore && (
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold">
+                      {applicant.matchingScore}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Match Score</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Score Breakdown */}
+            {applicant.analysis?.scoreBreakdown && (
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Brain className="w-5 h-5 mr-2 text-purple-600" />
+                  Detailed Score Breakdown
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Skills Match</span>
+                      <CircularProgress score={Number(applicant.analysis.scoreBreakdown.skillsMatch)} size={40} />
+                    </div>
+                    <p className="text-xs text-gray-600">Skills alignment with job requirements</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Education Match</span>
+                      <CircularProgress score={Number(applicant.analysis.scoreBreakdown.educationMatch)} size={40} />
+                    </div>
+                    <p className="text-xs text-gray-600">Educational background fit</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Experience Match</span>
+                      <CircularProgress score={Number(applicant.analysis.scoreBreakdown.experienceMatch)} size={40} />
+                    </div>
+                    <p className="text-xs text-gray-600">Work experience relevance</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Summary */}
+            <div className="bg-white rounded-lg p-6 mb-6 border border-gray-200">
+              <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <Brain className="w-5 h-5 mr-2 text-blue-600" />
+                AI Summary
+              </h4>
+              <p className="text-gray-700 leading-relaxed">
+                {applicant.analysis?.summary || 
+                  (applicant.matchingScore ? 
+                    `This applicant has a ${applicant.matchingScore}% match score for the position. The candidate shows strong potential based on their background and qualifications.` : 
+                    'This applicant has been evaluated for this position.'
+                  )
+                }
+              </p>
+            </div>
+
+            {/* Strengths & Areas for Improvement */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                  Key Strengths
+                </h4>
+                <ul className="space-y-2">
+                  {applicant.analysis?.strengths && applicant.analysis.strengths.length > 0 ? (
+                    applicant.analysis.strengths.map((strength: string, index: number) => (
+                      <li key={index} className="text-gray-700 flex items-start">
+                        <span className="text-green-500 mr-2 mt-1">•</span>
+                        {strength}
+                      </li>
+                    ))
+                  ) : (
+                    <>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-green-500 mr-2 mt-1">•</span>
+                        Strong matching score for this position
+                      </li>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-green-500 mr-2 mt-1">•</span>
+                        Relevant experience and skills
+                      </li>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-green-500 mr-2 mt-1">•</span>
+                        Promising candidate profile
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+              <div className="bg-white rounded-lg p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                  Areas for Improvement
+                </h4>
+                <ul className="space-y-2">
+                  {applicant.analysis?.weaknesses && applicant.analysis.weaknesses.length > 0 ? (
+                    applicant.analysis.weaknesses.map((weakness: string, index: number) => (
+                      <li key={index} className="text-gray-700 flex items-start">
+                        <span className="text-orange-500 mr-2 mt-1">•</span>
+                        {weakness}
+                      </li>
+                    ))
+                  ) : (
+                    <>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-orange-500 mr-2 mt-1">•</span>
+                        Schedule interview to assess cultural fit
+                      </li>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-orange-500 mr-2 mt-1">•</span>
+                        Review resume for additional details
+                      </li>
+                      <li className="text-gray-700 flex items-start">
+                        <span className="text-orange-500 mr-2 mt-1">•</span>
+                        Consider technical assessment if applicable
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {/* Additional Information */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {applicant.phone && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Phone:</span>
+                    <p className="text-gray-900">{applicant.phone}</p>
+                  </div>
+                )}
+                {applicant.linkedinUrl && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">LinkedIn:</span>
+                    <a 
+                      href={applicant.linkedinUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 block"
+                    >
+                      View Profile
+                    </a>
+                  </div>
+                )}
+                {applicant.portfolioUrl && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Portfolio:</span>
+                    <a 
+                      href={applicant.portfolioUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 block"
+                    >
+                      View Portfolio
+                    </a>
+                  </div>
+                )}
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Application Date:</span>
+                  <p className="text-gray-900">{new Date(applicant.submittedAt * 1000).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+              <div className="flex items-center space-x-3">
+                {applicant.resumeS3Uri ? (
+                  <button
+                    onClick={handleViewResume}
+                    disabled={resumeLoading}
+                    className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+                  >
+                    {resumeLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4 mr-2" />
+                    )}
+                    View Resume
+                  </button>
+                ) : (
+                  <span className="text-gray-400 text-sm">No resume available</span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  applicant.applicationStatus === 'SHORTLISTED' 
+                    ? 'bg-purple-100 text-purple-800' 
+                    : applicant.applicationStatus === 'TALENT_POOL'
+                    ? 'bg-blue-100 text-blue-800'
+                    : applicant.applicationStatus === 'REJECTED'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {applicant.applicationStatus === 'SHORTLISTED' && <UserCheck className="w-4 h-4 mr-1" />}
+                  {applicant.applicationStatus === 'TALENT_POOL' && <UserPlus className="w-4 h-4 mr-1" />}
+                  {applicant.applicationStatus === 'REJECTED' && <UserX className="w-4 h-4 mr-1" />}
+                  {applicant.applicationStatus}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AllApplicants() {
   const { 
     applicants, 
@@ -482,6 +768,7 @@ export default function AllApplicants() {
     maxScore: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
 
   // Get unique jobs and locations for filter options
   const uniqueJobs = [...new Set(applicants.map(a => a.jobTitle).filter((job): job is string => Boolean(job)))];
@@ -640,7 +927,16 @@ export default function AllApplicants() {
                       <td className="px-6 py-4 text-gray-700">{applicant.jobTitle || 'N/A'}</td>
                     <td className="px-6 py-4">
                         {applicant.matchingScore ? (
-                          <CircularProgress score={applicant.matchingScore} />
+                          <button
+                            onClick={() => setSelectedApplicant(applicant)}
+                            className="hover:scale-105 transition-transform cursor-pointer group relative"
+                            title="Click to view detailed analysis"
+                          >
+                            <CircularProgress score={applicant.matchingScore} />
+                            <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                              View Details
+                            </div>
+                          </button>
                         ) : (
                           <span className="text-gray-400">N/A</span>
                         )}
@@ -703,6 +999,13 @@ export default function AllApplicants() {
           }}
           uniqueJobs={uniqueJobs}
           uniqueLocations={uniqueLocations}
+        />
+
+        {/* Applicant Detail Modal */}
+        <ApplicantDetailModal
+          isOpen={!!selectedApplicant}
+          onClose={() => setSelectedApplicant(null)}
+          applicant={selectedApplicant}
         />
       </div>
     </div>
