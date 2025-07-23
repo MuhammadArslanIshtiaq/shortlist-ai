@@ -5,9 +5,6 @@ Shortlist AI is a cloud-native, serverless recruitment platform designed to help
 ## 🚀 Live Demo
 
 - **Admin Panel**: [https://main.d1kkn4bhxkcenv.amplifyapp.com/login](https://main.d1kkn4bhxkcenv.amplifyapp.com/login)
-  - Email: `demo@awslamdahack.com`
-  - Password: `Demo@aws123!`
-  - Sample resumes are in project submission directory.
 - **Careers Portal**: [https://main.d1kkn4bhxkcenv.amplifyapp.com/careers](https://main.d1kkn4bhxkcenv.amplifyapp.com/careers) 
 - **Video Walkthrough**: [https://youtu.be/aGyTgncYr3k](https://youtu.be/aGyTgncYr3k)
 
