@@ -189,9 +189,9 @@ const EmailTemplateModal = ({
                   <span className="text-gray-500 text-sm">No variables added</span>
                 )}
               </div>
-              <div className="text-xs text-gray-600">
-                Common variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{jobTitle}}'}, {'{{company}}'}, {'{{location}}'}, {'{{score}}'}
-              </div>
+                             <div className="text-xs text-gray-600">
+                 Common variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{jobTitle}}'}, {'{{company}}'}, {'{{location}}'}, {'{{score}}'}, {'{{skillsMatch}}'}, {'{{experienceMatch}}'}, {'{{educationMatch}}'}, {'{{overallScore}}'}, {'{{strengths}}'}, {'{{weaknesses}}'}, {'{{summary}}'}, {'{{status}}'}, {'{{applicationDate}}'}, {'{{currentDate}}'}
+               </div>
             </div>
 
             {/* Email Body */}
@@ -265,6 +265,21 @@ const SendEmailModal = ({
       email: string;
       firstName: string;
       lastName: string;
+      location: string;
+      matchingScore?: number;
+      applicationStatus: string;
+      submittedAt: number;
+      analysis?: {
+        overallScore: number;
+        scoreBreakdown: {
+          educationMatch: number;
+          experienceMatch: number;
+          skillsMatch: number;
+        };
+        strengths: string[];
+        weaknesses: string[];
+        summary: string;
+      };
     }>;
     subject: string;
     message: string;
@@ -334,13 +349,18 @@ const SendEmailModal = ({
 
     setIsLoading(true);
     try {
-      // Prepare applicant data for the API
-      const applicantData = filteredApplicants.map(applicant => ({
-        applicantId: applicant.applicantId,
-        email: applicant.email,
-        firstName: applicant.firstName || '',
-        lastName: applicant.lastName || ''
-      }));
+             // Prepare applicant data for the API
+       const applicantData = filteredApplicants.map(applicant => ({
+         applicantId: applicant.applicantId,
+         email: applicant.email,
+         firstName: applicant.firstName || '',
+         lastName: applicant.lastName || '',
+         location: applicant.location || '',
+         matchingScore: applicant.matchingScore,
+         applicationStatus: applicant.applicationStatus,
+         submittedAt: applicant.submittedAt,
+         analysis: applicant.analysis
+       }));
 
       const emailData = {
         jobId: selectedJob,
@@ -666,6 +686,21 @@ export default function EmailModule() {
       email: string;
       firstName: string;
       lastName: string;
+      location: string;
+      matchingScore?: number;
+      applicationStatus: string;
+      submittedAt: number;
+      analysis?: {
+        overallScore: number;
+        scoreBreakdown: {
+          educationMatch: number;
+          experienceMatch: number;
+          skillsMatch: number;
+        };
+        strengths: string[];
+        weaknesses: string[];
+        summary: string;
+      };
     }>;
     subject: string;
     message: string;

@@ -428,6 +428,21 @@ export const sendBulkEmails = async (emailData: {
     email: string;
     firstName: string;
     lastName: string;
+    location: string;
+    matchingScore?: number;
+    applicationStatus: string;
+    submittedAt: number;
+    analysis?: {
+      overallScore: number;
+      scoreBreakdown: {
+        educationMatch: number;
+        experienceMatch: number;
+        skillsMatch: number;
+      };
+      strengths: string[];
+      weaknesses: string[];
+      summary: string;
+    };
   }>;
   subject: string;
   message: string;
