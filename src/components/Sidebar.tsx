@@ -6,6 +6,7 @@ import {
   Briefcase, 
   Users, 
   Settings,
+  Mail,
   LogOut,
   ChevronDown,
   ChevronRight
@@ -39,6 +40,11 @@ const menuItems = [
       { name: 'Shortlisted Applicants', href: '/dashboard/applicants/shortlisted' },
       { name: 'Talent Pool', href: '/dashboard/applicants/talent-pool' }
     ]
+  },
+  {
+    name: 'Email Module',
+    icon: Mail,
+    href: '/dashboard/email',
   },
   {
     name: 'Settings',

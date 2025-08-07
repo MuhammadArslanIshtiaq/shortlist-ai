@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useData } from '@/contexts/DataContext';
 import { 
   Bell, 
   X, 
@@ -13,9 +15,38 @@ import {
 
 export default function NotificationPanel() {
   const { notifications, isConnected, clearNotifications, markAsRead } = useWebSocket();
+  const { applicants } = useData();
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   const unreadCount = notifications.length;
+
+  const handleAnalysisCompleteClick = (applicantId: string) => {
+    // Find the applicant to determine their status
+    const applicant = applicants.find(a => a.applicantId === applicantId);
+    
+    if (applicant) {
+      // Navigate to the appropriate page based on applicant status
+      switch (applicant.applicationStatus) {
+        case 'SHORTLISTED':
+          router.push(`/dashboard/applicants/shortlisted?applicantId=${applicantId}`);
+          break;
+        case 'TALENT_POOL':
+          router.push(`/dashboard/applicants/talent-pool?applicantId=${applicantId}`);
+          break;
+        default:
+          // For all other statuses (APPLIED, REVIEWED, etc.), go to main applicants page
+          router.push(`/dashboard/applicants?applicantId=${applicantId}`);
+          break;
+      }
+    } else {
+      // If applicant not found, default to main applicants page
+      router.push(`/dashboard/applicants?applicantId=${applicantId}`);
+    }
+    
+    // Close the notification panel
+    setIsOpen(false);
+  };
 
   const formatTime = (timestamp: number) => {
     const now = Date.now();
@@ -120,7 +151,21 @@ export default function NotificationPanel() {
                 {notifications.map((notification, index) => (
                   <div
                     key={index}
-                    className={`p-4 border-l-4 ${getNotificationColor(notification.type)} hover:bg-gray-50 transition-colors`}
+                    className={`p-4 border-l-4 ${getNotificationColor(notification.type)} hover:bg-gray-50 transition-colors ${
+                      notification.type === 'ANALYSIS_COMPLETE' && notification.applicantId 
+                        ? 'cursor-pointer' 
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (notification.type === 'ANALYSIS_COMPLETE' && notification.applicantId) {
+                        handleAnalysisCompleteClick(notification.applicantId);
+                      }
+                    }}
+                    title={
+                      notification.type === 'ANALYSIS_COMPLETE' && notification.applicantId 
+                        ? 'Click to view applicant details' 
+                        : undefined
+                    }
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-0.5">
@@ -132,7 +177,10 @@ export default function NotificationPanel() {
                             {notification.type === 'NEW_APPLICANT' ? 'New Application' : 'AI Analysis Complete'}
                           </p>
                           <button
-                            onClick={() => markAsRead(index)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent triggering the parent click
+                              markAsRead(index);
+                            }}
                             className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
                           >
                             <X className="w-3 h-3" />
@@ -141,6 +189,11 @@ export default function NotificationPanel() {
                         <p className="text-sm text-gray-600 mt-1">
                           {notification.message}
                         </p>
+                        {notification.type === 'ANALYSIS_COMPLETE' && notification.applicantId && (
+                          <p className="text-xs text-blue-600 mt-1 font-medium">
+                            Click to view details →
+                          </p>
+                        )}
                         <div className="flex items-center space-x-2 mt-2">
                           <Clock className="w-3 h-3 text-gray-400" />
                           <span className="text-xs text-gray-500">

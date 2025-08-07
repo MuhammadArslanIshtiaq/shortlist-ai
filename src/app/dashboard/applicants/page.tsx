@@ -17,6 +17,7 @@ import {
   Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getResumeDownloadUrl, updateApplicantStatus, Applicant } from '@/lib/api';
 import { useData } from '@/contexts/DataContext';
 
@@ -760,6 +761,7 @@ export default function AllApplicants() {
     refreshApplicants 
   } = useData();
 
+  const searchParams = useSearchParams();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     job: '',
@@ -773,6 +775,36 @@ export default function AllApplicants() {
   // Get unique jobs and locations for filter options
   const uniqueJobs = [...new Set(applicants.map(a => a.jobTitle).filter((job): job is string => Boolean(job)))];
   const uniqueLocations = [...new Set(applicants.map(a => a.location).filter((location): location is string => Boolean(location)))];
+
+  // Handle applicantId from query parameter
+  useEffect(() => {
+    const applicantId = searchParams.get('applicantId');
+    if (applicantId && applicants.length > 0) {
+      const applicant = applicants.find(a => a.applicantId === applicantId);
+      if (applicant) {
+        setSelectedApplicant(applicant);
+        // Remove the query parameter from the URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('applicantId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [searchParams, applicants]);
+
+  // Additional effect to handle applicantId when applicants data loads after the page
+  useEffect(() => {
+    const applicantId = searchParams.get('applicantId');
+    if (applicantId && applicants.length > 0 && !selectedApplicant) {
+      const applicant = applicants.find(a => a.applicantId === applicantId);
+      if (applicant) {
+        setSelectedApplicant(applicant);
+        // Remove the query parameter from the URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('applicantId');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [applicants, searchParams, selectedApplicant]);
 
   // Filter applicants based on search and filters
   const filteredApplicants = applicants.filter(applicant => {

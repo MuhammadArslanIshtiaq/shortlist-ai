@@ -7,7 +7,7 @@
 6 silly config load:file:C:\nvm4w\nodejs\etc\npmrc
 7 verbose title npm run dev
 8 verbose argv "run" "dev"
-9 verbose logfile logs-max:10 dir:C:\Users\arsi\Desktop\Shortlist AI\shortlist-ai\.npm\_logs\2025-07-23T18_58_09_240Z-
-10 verbose logfile C:\Users\arsi\Desktop\Shortlist AI\shortlist-ai\.npm\_logs\2025-07-23T18_58_09_240Z-debug-0.log
-11 silly logfile done cleaning log files
-12 http fetch GET 200 https://registry.npmjs.org/npm 419ms
+9 verbose logfile logs-max:10 dir:C:\Users\arsi\Desktop\Shortlist AI\shortlist-ai\.npm\_logs\2025-08-06T18_11_33_166Z-
+10 verbose logfile C:\Users\arsi\Desktop\Shortlist AI\shortlist-ai\.npm\_logs\2025-08-06T18_11_33_166Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly logfile done cleaning log files

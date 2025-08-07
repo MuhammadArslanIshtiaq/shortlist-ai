@@ -1,10 +1,16 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || '';
+const EMAIL_API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 // Validate API URL is available
 if (!API_URL) {
   console.warn('API Gateway URL not configured. API calls will fail.');
+}
+
+// Validate Email API URL is available
+if (!EMAIL_API_URL) {
+  console.warn('Email API URL not configured. Email API calls will fail.');
 }
 
 // Type definitions for cache
@@ -124,6 +130,26 @@ export const publicFetch = async (endpoint: string, options: RequestInit = {}) =
     }
     throw error;
   }
+};
+
+// Function for email API calls (for email module)
+export const emailApiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  const token = await getAuthToken();
+  const headers = new Headers(options.headers || {});
+  headers.set('Content-Type', 'application/json');
+  
+  if (token) {
+    headers.set('Authorization', `${token}`);
+  }
+  
+  const response = await fetch(`${EMAIL_API_URL}${endpoint}`, { ...options, headers });
+  
+  if (!response.ok) {
+    const errorBody = await response.json();
+    throw new Error(errorBody.error || `Email API call failed: ${response.statusText}`);
+  }
+  
+  return response.json();
 };
 
 // Jobs API functions with caching
@@ -393,6 +419,59 @@ export const getResumeDownloadUrl = async (applicantId: string) => {
   return cachedFetch(`resume-${applicantId}`, () => authenticatedFetch(`/applicants/${applicantId}/resume`), 10 * 60 * 1000); // 10 minutes TTL for resume URLs
 };
 
+// Email API functions
+export const sendBulkEmails = async (emailData: {
+  jobId: string;
+  templateId: string;
+  applicants: Array<{
+    applicantId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  }>;
+  subject: string;
+  message: string;
+}) => {
+  return emailApiFetch('/emails/bulk', {
+    method: 'POST',
+    body: JSON.stringify(emailData)
+  });
+};
+
+export const getEmailTemplates = async () => {
+  return cachedFetch('email-templates', () => emailApiFetch('/emails/templates'));
+};
+
+export const createEmailTemplate = async (templateData: {
+  name: string;
+  subject: string;
+  body: string;
+  variables: string[];
+}) => {
+  return emailApiFetch('/emails/templates', {
+    method: 'POST',
+    body: JSON.stringify(templateData)
+  });
+};
+
+export const updateEmailTemplate = async (templateId: string, templateData: {
+  name?: string;
+  subject?: string;
+  body?: string;
+  variables?: string[];
+}) => {
+  return emailApiFetch(`/emails/templates/${templateId}`, {
+    method: 'PUT',
+    body: JSON.stringify(templateData)
+  });
+};
+
+export const deleteEmailTemplate = async (templateId: string) => {
+  return emailApiFetch(`/emails/templates/${templateId}`, {
+    method: 'DELETE'
+  });
+};
+
 // Type definition for Job (for reference)
 export interface Job {
   jobId: string;
@@ -445,4 +524,15 @@ export interface Applicant {
     weaknesses: string[];
     summary: string;
   };
+} 
+
+// Type definition for EmailTemplate
+export interface EmailTemplate {
+  templateId: string;
+  name: string;
+  subject: string;
+  body: string;
+  variables: string[];
+  createdAt: number;
+  updatedAt: number;
 } 
